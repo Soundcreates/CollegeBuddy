@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Somaiya Vidyavihar LMS Extension",
+  "version": "1.0",
+  "description": "Scrape LMS and Gmail, push events to Google Keep",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open extension"
+  },
+  "permissions": ["storage", "identity", "activeTab"],
+  "host_permissions": ["https://kjsse.edu.in/*", "https://mail.google.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
