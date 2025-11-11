@@ -1,20 +1,168 @@
-package handler
+package handlers
 
-
-import(
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"somaiya-ext/internal/auth"
+	"somaiya-ext/internal/models"
+	"strings"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"gorm.io/gorm"
 )
 
+const oauthStateString = "kjssecodecell"
 
-
-func (h *Handler) Login (w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hello world"))
+func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     h.Config.OAUTH_CLIENT_ID,
+		ClientSecret: h.Config.OAUTH_CLIENT_SECRET,
+		RedirectURL:  "http://localhost:8080/auth/google/callback",
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+		Endpoint:     google.Endpoint,
+	}
 }
 
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello world"))
+func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	googleOauthConfig := h.getGoogleOauthConfig()
+	url := googleOauthConfig.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
+	state := r.FormValue("state")
+	if state != oauthStateString {
+		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
+		return
+	}
+
+	code := r.FormValue("code")
+	if code == "" {
+		http.Error(w, "Code not found", http.StatusBadRequest)
+		return
+	}
+
+	googleOauthConfig := h.getGoogleOauthConfig()
+	token, err := googleOauthConfig.Exchange(context.Background(), code)
+	if err != nil {
+		http.Error(w, "Token exchange failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	client := googleOauthConfig.Client(context.Background(), token)
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		http.Error(w, "Failed to get user info: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	var googleUser models.GoogleUser
+
+	if err := json.Unmarshal(body, &googleUser); err != nil {
+		http.Error(w, "Failed to parse user info: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !googleUser.VerifiedEmail {
+		http.Error(w, "Unauthorized: Email domain not allowed", http.StatusUnauthorized)
+		return
+	}
+
+	//handling only somaiya.edu to be allowed
+	suffix := "somaiya.edu"
+
+	if !strings.HasSuffix(googleUser.Email, suffix) {
+		http.Error(w, "UnAuthorized: Only somaiya students are allowed", http.StatusUnauthorized)
+		return
+	}
+
+	userInfo := models.Student{
+		Name:          googleUser.Name,
+		SVVEmail:      googleUser.Email,
+		ProfilePic:    googleUser.Picture,
+		VerifiedEmail: googleUser.VerifiedEmail,
+	}
+
+	var existingUser models.Student
+	err = h.DB.Where("email = ?", userInfo.SVVEmail).First(&existingUser).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			fmt.Println("Registering New User")
+			h.register(w, r, userInfo)
+			return
+		}
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("Logging in Existing User")
+	h.login(w, r, userInfo)
+}
+
+func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var foundStudent models.Student
+
+	err := h.DB.Where("svv_email = ?", userInfo.SVVEmail).First(&foundStudent).Error
+
+	if err != nil {
+		http.Error(w, "This User doesn't exist in database: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	token, err := auth.SignJWt(foundStudent, h.Config.JWT_SECRET)
+	if err != nil {
+		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Login Successful",
+		"user":    foundStudent,
+		"token":   token,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) {
+	// Create the user in database
+	var student models.Student
+	result := h.DB.Create(&userInfo)
+	if result.Error != nil {
+		http.Error(w, "Failed to register user: "+result.Error.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	token, err := auth.SignJWt(student, h.Config.JWT_SECRET)
+	if err != nil {
+		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Register Successful",
+		"user":    student,
+		"token":   token,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("HEllo world"))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Profile endpoint", "status": "OK"}`))
 }

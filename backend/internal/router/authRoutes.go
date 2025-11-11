@@ -4,12 +4,12 @@ import (
 	"net/http"
 	// handler "somaiya-ext/internal/handler"
 	handler "somaiya-ext/internal/handlers"
+	"somaiya-ext/internal/middleware"
 )
 
-func registerAuthRoutes(h* handler.Handler, router *http.ServeMux) {
+func registerAuthRoutes(h *handler.Handler, router *http.ServeMux) {
+	router.HandleFunc("POST /auth/OAuth", h.HandleGoogleLogin)
+	router.HandleFunc("GET /auth/google/callback", h.GoogleCallBack)
+	router.HandleFunc("GET /auth/profile", middleware.WithAuth(h.Profile))
 
-
-	router.HandleFunc("POST /auth/login", h.Login)
-	router.HandleFunc("POST /auth/register", h.Register)
-	router.HandleFunc("GET /auth/profile", h.Profile)
 }

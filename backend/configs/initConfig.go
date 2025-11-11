@@ -4,21 +4,22 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-
 )
 
-type Config struct{
-	DB_URI string
-	DB_HOST string
-	DB_PORT string
-	PORT int
-	DB_PASSWORD string
-	DB_NAME string
-	DB_USER string
-
+type Config struct {
+	DB_URI              string
+	DB_HOST             string
+	DB_PORT             string
+	PORT                int
+	DB_PASSWORD         string
+	DB_NAME             string
+	DB_USER             string
+	OAUTH_CLIENT_ID     string
+	OAUTH_CLIENT_SECRET string
+	JWT_SECRET          string
 }
 
-func LoadConfig() *Config{
+func LoadConfig() *Config {
 	fmt.Println("Loading config vars....")
 
 	portStr := os.Getenv("PORT")
@@ -35,16 +36,18 @@ func LoadConfig() *Config{
 	// 		dbPort = dbp
 	// 	}
 	// }
-	
-	cfg := &Config{
-		DB_URI : os.Getenv("DB_URI"),
-		DB_HOST : os.Getenv("DB_HOST"),
-		DB_NAME: os.Getenv("DB_NAME"),
-		PORT: port,
-		DB_PASSWORD: os.Getenv("DB_PASSWORD"),
-		DB_PORT: os.Getenv("DB_PORT"),
-		DB_USER: os.Getenv("DB_USER"),
 
+	cfg := &Config{
+		DB_URI:              os.Getenv("DB_URI"),
+		DB_HOST:             os.Getenv("DB_HOST"),
+		DB_NAME:             os.Getenv("DB_NAME"),
+		PORT:                port,
+		DB_PASSWORD:         os.Getenv("DB_PASSWORD"),
+		DB_PORT:             os.Getenv("DB_PORT"),
+		DB_USER:             os.Getenv("DB_USER"),
+		OAUTH_CLIENT_ID:     os.Getenv("OAUTH_CLIENT_ID"),
+		OAUTH_CLIENT_SECRET: os.Getenv("OAUTH_CLIENT_SECRET"),
+		JWT_SECRET:          os.Getenv("JWT_SECRET"),
 	}
 
 	return cfg
