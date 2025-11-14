@@ -1,9 +1,11 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -20,7 +22,11 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	fmt.Println("Loading config vars....")
+	log.Println("Loading config vars....")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading env vars")
+	}
 
 	portStr := os.Getenv("PORT")
 	port := 8080 //default port no
