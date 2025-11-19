@@ -5,17 +5,15 @@ import (
 	handler "somaiya-ext/internal/handlers"
 )
 
+func RegisterRoutes(h *handler.Handler) *http.ServeMux {
 
-func RegisterRoutes(h *handler.Handler){
-	
 	mainRouter := http.NewServeMux()
 
 	authRouter := http.NewServeMux()
 
-	mainRouter.Handle("/api", http.StripPrefix("/api", authRouter))
+	mainRouter.Handle("/api/", http.StripPrefix("/api", authRouter))
 
 	registerAuthRoutes(h, authRouter)
 
-
-	
+	return mainRouter
 }
