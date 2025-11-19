@@ -1,15 +1,25 @@
-import { useEffect, useState } from "react";
+import { useRef } from "react";
+import "./App.css";
+
+
+
 
 function App() {
-  const [loading, setLoading] = useState<boolean>(true);
   
-  useEffect(() => {
-    setLoading(false);
-  }, []);
+
+
   
+
+
   return (
-    <div className="w-full h-screen bg-black text-white font-md flex justify-center items-center">
-      <h1>{loading ? "Loading..." : "Hello world from nvim"}</h1>
+    <div className="extension-popup bg-white font-md caveat-font text-[#C9B59C] flex justify-center items-center">
+      <div className = "w-[100%] h-[100%] flex flex-col justify-center items-center bg-[#F9F8F6] ">
+
+        <h1  className="text-[50px] fade-down font-bold mb-6">CollegeBuddy</h1>
+
+        <button className="brutal-btn scale-up-and-pop lexend-font">{"Get Started with google"}</button>
+
+        </div>
     </div>
   );
 }

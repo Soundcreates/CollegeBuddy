@@ -1,2 +1,46 @@
 @import "tailwindcss";
 
+
+
+.extension-popup {
+  width: 350px;
+  height: 500px;
+  min-width: 300px;
+  min-height: 400px;
+  max-width: 800px;
+  max-height: 600px;
+  overflow: auto;
+}
+
+.caveat-font {
+  font-family: "Caveat", cursive;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.brutal-btn {
+  background: #fffcf2;
+  border: 4px solid #fff;
+  border-radius: 8px;
+  font-weight: 900;
+  padding: 14px 26px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 8px 8px 0 #D9CFC7;
+  transition: 0.2s;
+}
+
+.brutal-btn:hover {
+  box-shadow: 4px 4px 0 #D9CFC7;
+  transform: translate(4px,4px);
+}
+
+
+
+.lexend-font {
+  font-family: "Lexend Deca", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
