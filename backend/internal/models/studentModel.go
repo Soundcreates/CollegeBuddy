@@ -12,6 +12,8 @@ type Student struct {
 	SVVEmail      string `json:"email" gorm:"unique"`
 	ProfilePic    string `json:"picture"`
 	VerifiedEmail bool   `json:"verified_email"`
+	ORefreshToken  string `json:"o_refresh_token"`
+	OAccessToken string `json:"o_access_token"`
 }
 
 type GoogleUser struct {

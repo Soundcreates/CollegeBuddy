@@ -21,6 +21,8 @@ export default defineConfig({
         assetFileNames: "[name].[ext]",
       },
     },
+    
+        copyPublicDir: true
   },
   publicDir: "public",
 });

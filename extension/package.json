@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && copy manifest.json dist\\",
+    "build": "tsc -b && vite build",
     "build:extension": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview"

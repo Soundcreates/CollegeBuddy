@@ -26,26 +26,27 @@ func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
 		Endpoint:     google.Endpoint,
 	}
 }
-
 func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	googleOauthConfig := h.getGoogleOauthConfig()
-	url := googleOauthConfig.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
+	url := googleOauthConfig.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline) //here ibasically generate a url where the user goes and that google login pops up
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
+
+//here in this googlecallback functionm, my main motto will be to get the user code and store teh access and refresh token in db
 func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
-	if state != oauthStateString {
+	if state != oauthStateString { //here i get the state from the url 
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
 		return
 	}
-
+//this is the code
 	code := r.FormValue("code")
 	if code == "" {
 		http.Error(w, "Code not found", http.StatusBadRequest)
 		return
 	}
-
+//thiis is the token im exchanging
 	googleOauthConfig := h.getGoogleOauthConfig()
 	token, err := googleOauthConfig.Exchange(context.Background(), code)
 	if err != nil {
@@ -53,6 +54,10 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refreshToken := token.RefreshToken
+	
+	
+	fmt.Println("Refresh Token: ", refreshToken);
 	client := googleOauthConfig.Client(context.Background(), token)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
@@ -95,7 +100,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			fmt.Println("Registering New User")
-			h.register(w, r, userInfo)
+			h.register(w, r, userInfo, refreshToken,token.AccessToken);
 			return
 		}
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
@@ -103,10 +108,10 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("Logging in Existing User")
-	h.login(w, r, userInfo)
+	h.login(w, r, userInfo, refreshToken, token.AccessToken)
 }
 
-func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) {
+func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student, googleRefreshToken string, googleAccessToken string) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var foundStudent models.Student
@@ -135,7 +140,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) {
+func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student,googleRefreshToken string , googleAccessToken string) {
 	// Create the user in database
 	var student models.Student
 	result := h.DB.Create(&userInfo)
