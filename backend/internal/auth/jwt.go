@@ -16,7 +16,7 @@ func SignJWt(userInfo models.Student, secretKey string) (string, error) {
 		"iat":   time.Now().Unix(),                     // Issued at
 	})
 
-	tokenString, err := token.SignedString(secretKey)
+	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", err
 	}

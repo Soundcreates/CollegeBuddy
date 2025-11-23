@@ -19,6 +19,7 @@ type Config struct {
 	OAUTH_CLIENT_ID     string
 	OAUTH_CLIENT_SECRET string
 	JWT_SECRET          string
+	EXTENSION_ID        string
 }
 
 func LoadConfig() *Config {
@@ -54,6 +55,7 @@ func LoadConfig() *Config {
 		OAUTH_CLIENT_ID:     os.Getenv("OAUTH_CLIENT_ID"),
 		OAUTH_CLIENT_SECRET: os.Getenv("OAUTH_CLIENT_SECRET"),
 		JWT_SECRET:          os.Getenv("JWT_SECRET"),
+		EXTENSION_ID:        os.Getenv("EXTENSION_ID"),
 	}
 
 	return cfg

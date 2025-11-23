@@ -1,46 +1,239 @@
 @import "tailwindcss";
 
+body {
+  margin: 0;
+  padding: 0;
+  width: 350px;
+  height: 500px;
+  overflow: hidden;
+  background: #FFE66D;
+  font-family: "Lexend Deca", sans-serif;
+}
 
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary: #FFE66D;
+  --secondary: #FF6B35;
+  --tertiary: #A8DADC;
+  --dark: #1D3557;
+  --light: #F1FAEE;
+  --accent: #E63946;
+  --black: #000000;
+  --white: #FFFFFF;
+}
 
 .extension-popup {
   width: 350px;
   height: 500px;
-  min-width: 300px;
-  min-height: 400px;
-  max-width: 800px;
-  max-height: 600px;
-  overflow: auto;
+  min-width: 350px;
+  min-height: 500px;
+  max-width: 350px;
+  max-height: 500px;
+  overflow: hidden;
+  background: var(--primary);
+  border: 5px solid var(--black);
 }
 
-.caveat-font {
-  font-family: "Caveat", cursive;
-  font-optical-sizing: auto;
-  font-weight: 400;
-  font-style: normal;
+
+
+.brutalism-container {
+  background: var(--light);
+  border: 4px solid var(--black);
+  border-radius: 0;
+  box-shadow: 8px 8px 0 var(--black);
+  padding: 24px;
+  margin: 16px;
 }
 
-.brutal-btn {
-  background: #fffcf2;
-  border: 4px solid #fff;
-  border-radius: 8px;
+.brutalism-card {
+  background: var(--white);
+  border: 3px solid var(--black);
+  border-radius: 0;
+  box-shadow: 6px 6px 0 var(--dark);
+  padding: 20px;
+  margin: 12px 0;
+}
+
+/* Typography */
+.brutalism-title {
+  font-family: "Lexend Deca", sans-serif;
   font-weight: 900;
-  padding: 14px 26px;
+  font-size: 2rem;
+  color: var(--dark);
+  text-shadow: 3px 3px 0 var(--accent);
+  margin: 0 0 20px 0;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.brutalism-subtitle {
+  font-family: "Lexend Deca", sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--dark);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 16px 0;
+}
+
+.brutalism-text {
+  font-family: "Lexend Deca", sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--dark);
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+}
+
+/* Button Styles */
+.brutalism-btn {
+  background: var(--accent);
+  color: var(--white);
+  border: 4px solid var(--black);
+  border-radius: 0;
+  font-family: "Lexend Deca", sans-serif;
+  font-weight: 900;
   font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 32px;
   cursor: pointer;
-  box-shadow: 8px 8px 0 #D9CFC7;
-  transition: 0.2s;
+  box-shadow: 6px 6px 0 var(--black);
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: inline-block;
+  margin: 8px 4px;
 }
 
-.brutal-btn:hover {
-  box-shadow: 4px 4px 0 #D9CFC7;
-  transform: translate(4px,4px);
+.brutalism-btn:hover {
+  background: var(--secondary);
+  box-shadow: 3px 3px 0 var(--black);
+  transform: translate(3px, 3px);
 }
 
+.brutalism-btn:active {
+  box-shadow: 1px 1px 0 var(--black);
+  transform: translate(5px, 5px);
+}
 
+.brutalism-btn-primary {
+  background: var(--primary);
+  color: var(--black);
+}
+
+.brutalism-btn-primary:hover {
+  background: var(--tertiary);
+}
+
+.brutalism-btn-secondary {
+  background: var(--tertiary);
+  color: var(--dark);
+}
+
+.brutalism-btn-secondary:hover {
+  background: var(--secondary);
+  color: var(--white);
+}
+
+/* Input Styles */
+.brutalism-input {
+  background: var(--white);
+  border: 3px solid var(--black);
+  border-radius: 0;
+  font-family: "Lexend Deca", sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 12px 16px;
+  box-shadow: 4px 4px 0 var(--dark);
+  transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0;
+}
+
+.brutalism-input:focus {
+  outline: none;
+  box-shadow: 2px 2px 0 var(--dark);
+  transform: translate(2px, 2px);
+}
+
+/* Layout Helpers */
+.brutalism-flex-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.brutalism-grid {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* Animation Classes */
+.brutalism-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px) rotate(-1deg); }
+  75% { transform: translateX(5px) rotate(1deg); }
+}
+
+.brutalism-bounce {
+  animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Legacy Classes (for backward compatibility) */
+.caveat-font {
+  font-family: "Lexend Deca", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 900;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
 
 .lexend-font {
   font-family: "Lexend Deca", sans-serif;
   font-optical-sizing: auto;
-  font-weight: 400;
+  font-weight: 500;
   font-style: normal;
+}
+
+.brutal-btn {
+  background: var(--accent);
+  border: 4px solid var(--black);
+  border-radius: 0;
+  font-weight: 900;
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 6px 6px 0 var(--black);
+  transition: all 0.15s ease;
+  color: var(--white);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: "Lexend Deca", sans-serif;
+}
+
+.brutal-btn:hover {
+  background: var(--secondary);
+  box-shadow: 3px 3px 0 var(--black);
+  transform: translate(3px, 3px);
 }

@@ -7,7 +7,7 @@ async function handleGoogleAuth() {
         
         if (response.data.success && response.data.oauth_url) {
             // Check if we're in a Chrome extension environment
-            if (typeof chrome !== 'undefined' && chrome.tabs) {
+        if (typeof chrome !== 'undefined' && chrome.tabs) {
                 // Open the OAuth URL in a new tab
                 chrome.tabs.create({ url: response.data.oauth_url });
                 

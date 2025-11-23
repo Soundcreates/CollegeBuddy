@@ -101,14 +101,16 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		SVVEmail:      googleUser.Email,
 		ProfilePic:    googleUser.Picture,
 		VerifiedEmail: googleUser.VerifiedEmail,
+		ORefreshToken: refreshToken,
+		OAccessToken:  token.AccessToken,
 	}
 
 	var existingUser models.Student
-	err = h.DB.Where("email = ?", userInfo.SVVEmail).First(&existingUser).Error
+	err = h.DB.Where("svv_email = ?", userInfo.SVVEmail).First(&existingUser).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			fmt.Println("Registering New User")
-			h.register(w, r, userInfo, refreshToken, token.AccessToken)
+			h.register(w, r, userInfo)
 			return
 		}
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
@@ -116,10 +118,30 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("Logging in Existing User")
-	h.login(w, r, userInfo, refreshToken, token.AccessToken)
+	token , success, err := h.login(w, r, userInfo)
+
+	if err != nil || success == false {
+		fmt.Println("Logging in failed,aborting...")
+		return
+	}
+
+	cfg := h.Config
+
+	if err == nil {
+		// Instead of redirecting to a web page, redirect to extension (extension routing thoda confusing hai ig)
+		extensionURL := fmt.Sprintf("chrome-extension://%s/callback/callback.html?token=%s",
+			cfg.EXTENSION_ID, token.AccessToken)
+
+		http.Redirect(w, r, extensionURL, http.StatusTemporaryRedirect)
+		return
+	}
+	// Handle error case
+	errorURL := fmt.Sprintf("chrome-extension://%s/oauth-error.html?error=%s",
+		cfg.EXTENSION_ID, "auth_failed")
+	http.Redirect(w, r, errorURL, http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student, googleRefreshToken string, googleAccessToken string) {
+func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string,  bool, error) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var foundStudent models.Student
@@ -128,50 +150,54 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 
 	if err != nil {
 		http.Error(w, "This User doesn't exist in database: "+err.Error(), http.StatusUnauthorized)
-		return
+		return " ", false, err
 	}
 
-	token, err := auth.SignJWt(foundStudent, h.Config.JWT_SECRET)
+	token, err := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
 		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
-		return
+		return " ", false, err
 	}
 
-	response := map[string]interface{}{
-		"success": true,
-		"message": "Login Successful",
-		"user":    foundStudent,
-		"token":   token,
-	}
+	// response := map[string]interface{}{
+	// 	"success": true,
+	// 	"message": "Login Successful",
+	// 	"user":    foundStudent,
+	// 	"token":   token,
+	// }
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	// w.WriteHeader(http.StatusOK)
+	// json.NewEncoder(w).Encode(response)
+	return token, true, nil
+
 }
 
-func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student, googleRefreshToken string, googleAccessToken string) {
+func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string,bool, error){
 	// Create the user in database
 	var student models.Student
 	result := h.DB.Create(&userInfo)
 	if result.Error != nil {
 		http.Error(w, "Failed to register user: "+result.Error.Error(), http.StatusInternalServerError)
-		return
+		return " ", false, result.Error
 	}
 
-	token, err := auth.SignJWt(student, h.Config.JWT_SECRET)
+	token, err := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
 		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
-		return
+		return " ", false, err
 	}
 
-	response := map[string]interface{}{
-		"success": true,
-		"message": "Register Successful",
-		"user":    student,
-		"token":   token,
-	}
+	// response := map[string]interface{}{
+	// 	"success": true,
+	// 	"message": "Register Successful",
+	// 	"user":    student,
+	// 	"token":   token,
+	// }
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	// w.WriteHeader(http.StatusOK)
+	// json.NewEncoder(w).Encode(response)
+
+	return token, true, nil
 }
 
 func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
