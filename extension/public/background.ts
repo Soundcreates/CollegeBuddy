@@ -1,76 +1,116 @@
-//this is the service manager file for the extension
-//what is service manager?
-//well in webapps we use different frontend files to do api calling and all that
-//but in extensions we have different architecture, we do it in background.ts file which gets moved to the dist folder which is infact being loaded on to the users screen
-//soo all the backendd calling should be done in this file
+/// <reference types = "chrome" />
 
-type addListenerType = {
-  message: any,
-  sender : any,
-  sendResponse : any
+console.log("Background script loaded!");
+
+interface OAuthResponse {
+  success: boolean;
+  error?: string;
+  tabId?: number;
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) :addListenerType => {
-  if(message.type === "START_OAUTH"){
-    //handling start oauth flow
-    handleOAuth(sendresponse);
+interface OAuthMessage {
+  type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user?: any;
+  token?: string;
+}
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((message: OAuthMessage, sender, sendResponse) => {
+  console.log("Message received in background:", message);
+
+  if (message.type === "START_OAUTH") {
+    handleOAuth(sendResponse);
     return true;
   }
 
-  if(message.type == "OAUTH_COMPLETE"){
-    //storing the local data
-    chrome.storage.local.set({
-      isAuthenticated: true,
-      user: message.user,
-      token: message.token,
-    }, () => {
-      //notify popup about successfull oauth
-      chrome.runtime.sendMessage({
-        type: "AUTH_SUCCESS",
-        user: message.user
-      });
-      sendResponse({success: true});
-    });
+  if (message.type === "OAUTH_SUCCESS") {
+    console.log("OAuth is successful, this log is coming from background:", message);
+    
+    chrome.storage.local.set(
+      {
+        user: message.user,
+        token: message.token,
+        isAuthenticated: true,
+      },
+      () => {
+        chrome.runtime.sendMessage({
+          type: "USER_OAUTH_SUCCESSFUL",
+          user: message.user,
+          token: message.token
+        });
+        sendResponse({ success: true });
+      }
+    );
     return true;
   }
-};
+});
 
-async function handleOAuth(sendResponse :any){
-  try{
+// Listen for messages from external pages (the callback page)
+chrome.runtime.onMessageExternal.addListener((message: OAuthMessage, sender, sendResponse) => {
+  console.log("External message received:", message, "from:", sender);
+  
+  if (message.type === "OAUTH_SUCCESS" && sender.url && sender.url.includes("localhost:8080")) {
+    console.log("OAuth success from callback page:", message);
+    
+    chrome.storage.local.set(
+      {
+        user: message.user,
+        token: message.token,
+        isAuthenticated: true,
+      },
+      () => {
+        chrome.runtime.sendMessage({
+          type: "USER_OAUTH_SUCCESSFUL",
+          user: message.user,
+          token: message.token
+        });
+        sendResponse({ success: true });
+      }
+    );
+    return true;
+  }
+});
+
+async function handleOAuth(sendResponse: (response: OAuthResponse) => void) {
+  try {
+    console.log("Starting OAuth flow....");
+    
     const response = await fetch("http://localhost:8080/api/auth/OAuth", {
-      method : "POST",
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
-    const data = await response.json();
-
-    if(data.success && data.oauth_url){
-      chrome.tabs.create({
-        url: data.oauth_url,
-        active: true
-      }, (tab) => {
-        //Listen for tab updates to catch the call back
-        const listener = (tabId, changeInfo, updatedTab){
-          if(tabId === tab.id && changeInfo.url){
-            //checking if url contains callback
-            if(changeInfo.url.includes('/api/auth/google/callback')) {
-              //this signals that the outh hogaya, so close the tab
-              chrome.tabs.remove(tabId);
-              chrome.tabs.onUpdated.removeListener(listener);
-              sendResponse({success: true});
-            }
-          }
-        };
-        chrome.tabs.onUpdated.addListener(listener);
-      });
-    }else{
-      sendResponse({success: false, error: "Failed to get OAuth URL"});
-
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-  }catch(err : string){
-    console.error("OAuth error: ", err.message);
-    sendResponse({success: false, error: err.message})
+
+    const data = await response.json();
+    console.log("OAuth URL response:", data);
+
+    if (data.success && data.oauth_url) {
+      chrome.tabs.create(
+        {
+          url: data.oauth_url,
+          active: true,
+        },
+        (tab) => {
+          console.log("OAuth tab created:", tab?.id);
+          sendResponse({ success: true, tabId: tab?.id });
+        }
+      );
+    } else {
+      console.error("Failed to get OAuth URL:", data);
+      sendResponse({ success: false, error: "Failed to get OAuth URL" });
+    }
+  } catch (error: unknown) {
+    console.error("OAuth error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    sendResponse({ 
+      success: false, 
+      error: `Backend connection failed: ${errorMessage}. Make sure your Go server is running on port 8080.`
+    });
   }
 }

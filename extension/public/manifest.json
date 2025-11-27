@@ -3,12 +3,25 @@
   "name": "Somaiya Extension",
   "version": "1.0.0",
   "description": "Somaiya College Extension",
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://localhost:8080/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "index.html",
     "default_title": "Somaiya Extension"
   },
-  "permissions": [
-    "activeTab",
-    "tabs"
-  ]
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:8080/*"
+    ]
+  }
 }

@@ -38,7 +38,6 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		"message":   "OAuth URL generated successfully",
 	}
 
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -118,7 +117,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("Logging in Existing User")
-	token , success, err := h.login(w, r, userInfo)
+	_, success, err := h.login(w, r, userInfo)
 
 	if err != nil || success == false {
 		fmt.Println("Logging in failed,aborting...")
@@ -128,20 +127,82 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	cfg := h.Config
 
 	if err == nil {
-		// Instead of redirecting to a web page, redirect to extension (extension routing thoda confusing hai ig)
-		extensionURL := fmt.Sprintf("chrome-extension://%s/callback/callback.html?token=%s",
-			cfg.EXTENSION_ID, token.AccessToken)
+		// Create a simple HTML callback page that communicates with the extension
+		callbackHTML := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth Callback</title>
+</head>
+<body>
+    <div id="status">Authentication successful! You can close this tab.</div>
+    <script>
+        // Send message to extension
+        if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+            const extensionId = '%s';
+            chrome.runtime.sendMessage(extensionId, {
+                type: 'OAUTH_SUCCESS',
+                user: %s,
+                token: '%s'
+            }, function(response) {
+                if (chrome.runtime.lastError) {
+                    console.log('Error:', chrome.runtime.lastError.message);
+                } else {
+                    console.log('Message sent to extension:', response);
+                    // Close the tab after successful communication
+                    window.close();
+                }
+            });
+        }
+        
+        // Fallback: redirect to extension popup
+        setTimeout(function() {
+            window.close();
+        }, 2000);
+    </script>
+</body>
+</html>`, cfg.EXTENSION_ID, `{"email":"`+userInfo.SVVEmail+`", "name":"`+userInfo.Name+`"}`, token.AccessToken)
 
-		http.Redirect(w, r, extensionURL, http.StatusTemporaryRedirect)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(callbackHTML))
 		return
 	}
 	// Handle error case
-	errorURL := fmt.Sprintf("chrome-extension://%s/oauth-error.html?error=%s",
-		cfg.EXTENSION_ID, "auth_failed")
-	http.Redirect(w, r, errorURL, http.StatusTemporaryRedirect)
+	errorHTML := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth Error</title>
+</head>
+<body>
+    <div id="status">Authentication failed. Please try again.</div>
+    <script>
+        // Send error message to extension
+        if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+            const extensionId = '%s';
+            chrome.runtime.sendMessage(extensionId, {
+                type: 'OAUTH_ERROR',
+                error: 'Authentication failed'
+            }, function(response) {
+                console.log('Error message sent to extension');
+                window.close();
+            });
+        }
+        
+        setTimeout(function() {
+            window.close();
+        }, 3000);
+    </script>
+</body>
+</html>`, cfg.EXTENSION_ID)
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(errorHTML))
 }
 
-func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string,  bool, error) {
+func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, bool, error) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var foundStudent models.Student
@@ -172,9 +233,8 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 
 }
 
-func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string,bool, error){
+func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, bool, error) {
 	// Create the user in database
-	var student models.Student
 	result := h.DB.Create(&userInfo)
 	if result.Error != nil {
 		http.Error(w, "Failed to register user: "+result.Error.Error(), http.StatusInternalServerError)

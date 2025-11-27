@@ -8,7 +8,7 @@ import (
 )
 
 func registerAuthRoutes(h *handler.Handler, router *http.ServeMux) {
-	router.HandleFunc("POST /auth/OAuth", h.HandleGoogleLogin)
+	router.HandleFunc("GET /auth/OAuth", h.HandleGoogleLogin)
 	router.HandleFunc("GET /auth/google/callback", h.GoogleCallBack)
 	router.HandleFunc("GET /auth/profile", middleware.WithAuth(h.Profile))
 
