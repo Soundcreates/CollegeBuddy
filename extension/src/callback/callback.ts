@@ -20,7 +20,7 @@ if (success === 'true' && token && userParam) {
             user: user,
             token: token
         }, () => {
-            statusDiv.innerHTML = '<div class="success">✅ Authentication successful! You can close this tab.</div>';
+            statusDiv.innerHTML = '<div class="success"> Authentication successful! You can close this tab.</div>';
             
             // Notify the extension popup
             chrome.runtime.sendMessage({

@@ -1,4 +1,3 @@
-
 interface User {
     id: number;
     name: string;
@@ -15,7 +14,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
     return (
         <div className="extension-popup brutalism-container">
             <div className="brutalism-card">
-                <h1 className="brutalism-title">Welcome!</h1>
+                <h1 className="brutalism-title my-10">Welcome!</h1>
                 
                 <div className="flex items-center mb-4">
                     {user.profile_pic && (
@@ -28,6 +27,33 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                     <div>
                         <p className="brutalism-text font-bold">{user.name}</p>
                         <p className="brutalism-text text-sm">{user.svv_email}</p>
+                    </div>
+                </div>
+
+                {/* Todo List Box */}
+                <div className="todo-box">
+                    <h2 className="todo-title">TODAY'S TASKS</h2>
+                    <div className="todo-list">
+                        <div className="todo-item">
+                            <input type="checkbox" className="todo-checkbox" />
+                            <span className="todo-text">Complete Data Structures Assignment</span>
+                        </div>
+                        <div className="todo-item">
+                            <input type="checkbox" className="todo-checkbox" />
+                            <span className="todo-text">Submit Project Report</span>
+                        </div>
+                        <div className="todo-item">
+                            <input type="checkbox" className="todo-checkbox" />
+                            <span className="todo-text">Prepare for Database Exam</span>
+                        </div>
+                        <div className="todo-item">
+                            <input type="checkbox" className="todo-checkbox" />
+                            <span className="todo-text">Attend Team Meeting at 3 PM</span>
+                        </div>
+                        <div className="todo-item">
+                            <input type="checkbox" className="todo-checkbox" />
+                            <span className="todo-text">Review Operating Systems Notes</span>
+                        </div>
                     </div>
                 </div>
                 
