@@ -21,4 +21,42 @@ async function handleGoogleAuth() {
     }
 }
 
-export { handleGoogleAuth };
+
+interface GmailData {
+  messages: Array<{
+    id: string;
+    subject: string;
+    from: string;
+    date: string;
+    body: string;
+    snippet: string;
+  }>;
+  nextPageToken?: string;
+  resultSizeEstimate: number;
+}
+
+async function scrapeGmailEmails(): Promise<GmailData> {
+    return new Promise((resolve, reject) => {
+        if (typeof chrome !== "undefined" && chrome.runtime) {
+            chrome.runtime.sendMessage(
+                { type: "START_GMAIL_SCRAPE" },
+                (response) => {
+                    if (chrome.runtime.lastError) {
+                        reject(new Error(chrome.runtime.lastError.message));
+                        return;
+                    }
+
+                    if (response.success) {
+                        resolve(response.data);
+                    } else {
+                        reject(new Error(response.error));
+                    }
+                }
+            );
+        } else {
+            reject(new Error("Chrome runtime not available"));
+        }
+    });
+}
+
+export { handleGoogleAuth, scrapeGmailEmails };

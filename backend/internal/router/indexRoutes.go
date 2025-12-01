@@ -9,17 +9,13 @@ func RegisterRoutes(h *handler.Handler) *http.ServeMux {
 
 	mainRouter := http.NewServeMux()
 
-	authRouter := http.NewServeMux()
+	apiRouter := http.NewServeMux()
 
-	scraperRouter := http.NewServeMux()
+	mainRouter.Handle("/api/", http.StripPrefix("/api", apiRouter))
 
-	mainRouter.Handle("/api", http.StripPrefix("/api", scraperRouter))
+	registerAuthRoutes(h, apiRouter)
 
-	mainRouter.Handle("/api/", http.StripPrefix("/api", authRouter))
-
-	registerAuthRoutes(h, authRouter)
-
-	registerScraperRoutes(h, scraperRouter)
+	registerScraperRoutes(h, apiRouter)
 
 	return mainRouter
 }

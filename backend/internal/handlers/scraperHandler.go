@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -67,6 +68,8 @@ var (
 )
 
 func (h *Handler) ScrapeGmail(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Reached scrapegmail handler")
+	
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -74,8 +77,7 @@ func (h *Handler) ScrapeGmail(w http.ResponseWriter, r *http.Request) {
 
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Content-Type must be application/json", http.StatusBadRequest)
-		return
-	}
+		return }
 
 	// Decode token received from extension side
 	var token TokenStruct
@@ -286,8 +288,10 @@ func decodeBase64URL(data string) string {
 		data += "="
 	}
 
-	// Note: For proper base64 decoding, you'd need to import "encoding/base64"
-	// and use base64.StdEncoding.DecodeString(data)
-	// For now, returning the processed string
-	return data
+	decoded, err := base64.StdEncoding.DecodeString(data)
+	if err !=nil{
+		return ""
+	}
+
+	return string(decoded)
 }

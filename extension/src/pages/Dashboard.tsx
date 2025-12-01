@@ -5,12 +5,28 @@ interface User {
     profile_pic: string;
 }
 
+interface GmailData {
+    messages: Array<{
+        id: string;
+        subject: string;
+        from: string;
+        date: string;
+        body: string;
+        snippet: string;
+    }>;
+    nextPageToken?: string;
+    resultSizeEstimate: number;
+}
+
 interface DashboardProps {
     user: User;
     onLogout: () => void;
+    gmailData: GmailData | null;
+    scrapingLoading: boolean;
+    onRefreshGmail: () => Promise<void>;
 }
 
-function Dashboard({ user, onLogout }: DashboardProps) {
+function Dashboard({ user, onLogout, gmailData, scrapingLoading, onRefreshGmail }: DashboardProps) {
     return (
         <div className="extension-popup brutalism-container">
             <div className="brutalism-card">
@@ -28,6 +44,48 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                         <p className="brutalism-text font-bold">{user.name}</p>
                         <p className="brutalism-text text-sm">{user.svv_email}</p>
                     </div>
+                </div>
+
+                {/* Gmail Section */}
+                <div className="mt-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="brutalism-subtitle">Gmail Inbox</h2>
+                        <button 
+                            className="brutalism-btn brutalism-btn-secondary"
+                            onClick={onRefreshGmail}
+                            disabled={scrapingLoading}
+                        >
+                            {scrapingLoading ? "Loading..." : "Refresh"}
+                        </button>
+                    </div>
+
+                    {scrapingLoading && (
+                        <p className="brutalism-text">Fetching your emails...</p>
+                    )}
+
+                    {gmailData && !scrapingLoading && (
+                        <div className="gmail-list">
+                            <p className="brutalism-text mb-3">
+                                Found {gmailData.messages.length} emails
+                            </p>
+                            <div className="max-h-60 overflow-y-auto">
+                                {gmailData.messages.map((email) => (
+                                    <div key={email.id} className="border-b border-gray-300 pb-2 mb-2">
+                                        <p className="font-bold text-sm">{email.subject || "No Subject"}</p>
+                                        <p className="text-xs text-gray-600">{email.from}</p>
+                                        <p className="text-xs text-gray-500">{new Date(email.date).toLocaleDateString()}</p>
+                                        <p className="text-xs mt-1">{email.snippet}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {!gmailData && !scrapingLoading && (
+                        <p className="brutalism-text text-gray-500">
+                            No Gmail data available. Click refresh to load emails.
+                        </p>
+                    )}
                 </div>
 
                 {/* Todo List Box */}

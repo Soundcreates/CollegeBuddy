@@ -44,6 +44,24 @@ chrome.runtime.onMessage.addListener((message: OAuthMessage, sender, sendRespons
     );
     return true;
   }
+
+  if (message.type === "START_GMAIL_SCRAPE") {
+    // Get token from storage and start scraping
+    chrome.storage.local.get(["token"], (result) => {
+      if (result.token && typeof result.token === 'string') {
+        scrapeGmail(result.token as string)
+          .then((data) => {
+            sendResponse({ success: true, data: data });
+          })
+          .catch((error) => {
+            sendResponse({ success: false, error: error.message });
+          });
+      } else {
+        sendResponse({ success: false, error: "No OAuth token found. Please authenticate first." });
+      }
+    });
+    return true; // Keep message channel open for async response
+  }
 });
 
 // Listen for messages from external pages (the callback page)
@@ -112,5 +130,54 @@ async function handleOAuth(sendResponse: (response: OAuthResponse) => void) {
       success: false, 
       error: `Backend connection failed: ${errorMessage}. Make sure your Go server is running on port 8080.`
     });
+  }
+}
+
+async function scrapeGmail(token: string) {
+  try {
+    console.log("Starting gmail scraping...");
+    
+    
+    const response = await fetch("http://localhost:8080/api/scrape/gmail", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token  // Send token in body as your backend expects
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log("Gmail scraping successful:", data);
+    
+    // Store the scraped emails in chrome storage for  extension to access
+    chrome.storage.local.set({
+      gmailData: data,
+      lastScrapeTime: new Date().toISOString()
+    });
+
+    // Notify popup that scraping is complete
+    chrome.runtime.sendMessage({
+      type: "GMAIL_SCRAPE_SUCCESS",
+      data: data
+    });
+
+    return data;
+  } catch (error) {
+    console.error("Gmail scraping error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    // Notify popup about the error
+    chrome.runtime.sendMessage({
+      type: "GMAIL_SCRAPE_ERROR",
+      error: errorMessage
+    });
+    
+    throw error;
   }
 }
