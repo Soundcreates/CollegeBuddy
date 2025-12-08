@@ -9,8 +9,6 @@ import (
 
 func WithAuth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// Get token from Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "Authorization header required", http.StatusUnauthorized)
@@ -30,8 +28,9 @@ func WithAuth(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
 			return
 		}
+		
 
 		// Token is valid, proceed to next handler
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w,r)
 	})
 }

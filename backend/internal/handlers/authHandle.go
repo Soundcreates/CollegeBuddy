@@ -9,28 +9,37 @@ import (
 	"somaiya-ext/internal/auth"
 	"somaiya-ext/internal/models"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
 )
 
-const oauthStateString = "kjssecodecell"
+const OauthStateString = "kjssecodecell"
+
+type userGmailKey string
+
+const user_gmail userGmailKey = "user_gmail"
 
 func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     h.Config.OAUTH_CLIENT_ID,
 		ClientSecret: h.Config.OAUTH_CLIENT_SECRET,
 		RedirectURL:  "http://localhost:8080/api/auth/google/callback",
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
-		Endpoint:     google.Endpoint,
+		Scopes: []string{
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
+			"https://www.googleapis.com/auth/gmail.readonly",
+		},
+		Endpoint: google.Endpoint,
 	}
 }
 func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	googleOauthConfig := h.getGoogleOauthConfig()
-	url := googleOauthConfig.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
+	url := googleOauthConfig.AuthCodeURL(OauthStateString, oauth2.AccessTypeOffline)
 	fmt.Println("Generated OAuth URL: ", url)
 	response := map[string]interface{}{
 		"success":   true,
@@ -44,7 +53,7 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 // here in this googlecallback functionm, my main motto will be to get the user code and store teh access and refresh token in db
 func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
-	if state != oauthStateString { //here i get the state from the url
+	if state != OauthStateString { //here i get the state from the url
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
 		return
 	}
@@ -54,9 +63,13 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Code not found", http.StatusBadRequest)
 		return
 	}
-	//thiis is the token im exchanging
+	//this is the token im exchanging
+	// Create a context with a 10-second timeout for OAuth operations
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
 	googleOauthConfig := h.getGoogleOauthConfig()
-	token, err := googleOauthConfig.Exchange(context.Background(), code)
+	token, err := googleOauthConfig.Exchange(ctx, code)
 	if err != nil {
 		http.Error(w, "Token exchange failed: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -65,7 +78,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	refreshToken := token.RefreshToken
 
 	fmt.Println("Refresh Token: ", refreshToken)
-	client := googleOauthConfig.Client(context.Background(), token)
+	client := googleOauthConfig.Client(ctx, token)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
 		http.Error(w, "Failed to get user info: "+err.Error(), http.StatusInternalServerError)
@@ -119,15 +132,20 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Logging in Existing User")
 	_, success, err := h.login(w, r, userInfo)
 
-	if err != nil || success == false {
+	if err != nil || !success {
 		fmt.Println("Logging in failed,aborting...")
 		return
 	}
 
 	cfg := h.Config
 
-	if err == nil {
+	if success {
 		// Create a simple HTML callback page that communicates with the extension
+		jwtToken, jwtErr := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
+		if jwtErr != nil {
+			http.Error(w, "Failed to generate JWT token: "+jwtErr.Error(), http.StatusInternalServerError)
+			return
+		}
 		callbackHTML := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -161,7 +179,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
         }, 2000);
     </script>
 </body>
-</html>`, cfg.EXTENSION_ID, `{"email":"`+userInfo.SVVEmail+`", "name":"`+userInfo.Name+`"}`, token.AccessToken)
+</html>`, cfg.EXTENSION_ID, `{"email":"`+userInfo.SVVEmail+`", "name":"`+userInfo.Name+`"}`, jwtToken)
 
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
@@ -211,23 +229,16 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 
 	if err != nil {
 		http.Error(w, "This User doesn't exist in database: "+err.Error(), http.StatusUnauthorized)
-		return " ", false, err
+		return "", false, err
 	}
 
 	token, err := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
 		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
-		return " ", false, err
+		return "", false, err
 	}
 
-	// response := map[string]interface{}{
-	// 	"success": true,
-	// 	"message": "Login Successful",
-	// 	"user":    foundStudent,
-	// 	"token":   token,
-	// }
-
-	// w.WriteHeader(http.StatusOK)
+	return token, true, nil
 	// json.NewEncoder(w).Encode(response)
 	return token, true, nil
 
@@ -238,30 +249,45 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo mode
 	result := h.DB.Create(&userInfo)
 	if result.Error != nil {
 		http.Error(w, "Failed to register user: "+result.Error.Error(), http.StatusInternalServerError)
-		return " ", false, result.Error
+		return "", false, result.Error
 	}
 
 	token, err := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
 		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
-		return " ", false, err
+		return "", false, err
 	}
-
-	// response := map[string]interface{}{
-	// 	"success": true,
-	// 	"message": "Register Successful",
-	// 	"user":    student,
-	// 	"token":   token,
-	// }
-
-	// w.WriteHeader(http.StatusOK)
-	// json.NewEncoder(w).Encode(response)
 
 	return token, true, nil
 }
 
-func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Profile endpoint", "status": "OK"}`))
+// helper function to get student profile from JWT token
+func (h *Handler) Profile(token string) (map[string]interface{}, error) {
+	// Parse JWT token to extract email
+	claims, err := auth.ParseJwt(token, h.Config.JWT_SECRET)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token: %v", err)
+	}
+
+	gmail, ok := claims["email"].(string)
+	if !ok {
+		return nil, fmt.Errorf("email not found in token claims")
+	}
+
+	var student models.Student
+	err = h.DB.Where("svv_email = ?", gmail).First(&student).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("student not found")
+		}
+		return nil, fmt.Errorf("error querying user profile: %v", err)
+	}
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Profile fetched successfully",
+		"user":    student,
+	}
+
+	return response, nil
 }
