@@ -2,13 +2,15 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"somaiya-ext/internal/models"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
+	"gorm.io/gorm"
 )
 
 type GmailService struct {
@@ -16,13 +18,14 @@ type GmailService struct {
 		OAuthClientID     string
 		OAuthClientSecret string
 	}
+	DB *gorm.DB
 }
 
 func NewGmailService(clientID, clientSecret string) *GmailService {
 	return &GmailService{}
 }
 
-func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID, clientSecret, accessToken, refreshToken string) (*gmail.Service, error) {
+func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID, clientSecret, accessToken, refreshToken string, email string, db *gorm.DB) (*gmail.Service, error) {
 
 	config := &oauth2.Config{
 		ClientID:     clientID,
@@ -33,33 +36,56 @@ func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID
 		},
 		Endpoint: google.Endpoint,
 	}
+
+	// Create token with proper expiry so oauth2 library knows when to refresh
+	// Set expiry to now so it will automatically refresh on first use
 	token := &oauth2.Token{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
+		Expiry:       time.Now(), // Set to now so it will refresh automatically
 	}
 
-	client := config.Client(ctx, token)
+	// Create a custom token source that will update DB when token is refreshed
+	tokenSource := config.TokenSource(ctx, token)
+	tokenSource = &dbTokenSource{
+		source: tokenSource,
+		db:     db,
+		email:  email,
+	}
+
+	client := oauth2.NewClient(ctx, tokenSource)
 
 	return gmail.NewService(ctx, option.WithHTTPClient(client))
 }
 
-func (gs *GmailService) ScrapeGmailEmails(ctx context.Context, student models.Student) ([]*gmail.Message, error) {
-	log.Println("Starting Gmail scraping for student:", student.SVVEmail)
-	if student.OAccessToken == "" {
-		return nil, fmt.Errorf("access token not found for student %s", student.SVVEmail)
-	}
+// Custom token source that saves refreshed tokens to database
+type dbTokenSource struct {
+	source oauth2.TokenSource
+	db     *gorm.DB
+	email  string
+}
 
-	gmailService, err := gs.GmailClientFromStoredToken(ctx, gs.Config.OAuthClientID, gs.Config.OAuthClientSecret, student.OAccessToken, student.ORefreshToken)
+func (dts *dbTokenSource) Token() (*oauth2.Token, error) {
+	token, err := dts.source.Token()
 	if err != nil {
 		return nil, err
 	}
 
-	// Query Gmail API for messages
-	results, err := gmailService.Users.Messages.List("me").MaxResults(10).Do()
-	if err != nil {
-		return nil, err
+	// If token was refreshed (has non-zero expiry), save to database
+	if token.Expiry.Unix() > time.Now().Unix() {
+		log.Printf("Token refreshed, saving to database for %s", dts.email)
+		err = dts.db.Model(&models.Student{}).
+			Where("svv_email = ?", dts.email).
+			Updates(map[string]interface{}{
+				"o_access_token":        token.AccessToken,
+				"o_refresh_token":       token.RefreshToken,
+				"o_access_token_expiry": token.Expiry.Unix(),
+			}).Error
+		if err != nil {
+			log.Printf("Failed to save refreshed token: %v", err)
+		}
 	}
 
-	return results.Messages, nil
+	return token, nil
 }

@@ -94,7 +94,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 
 	// Create Gmail client with stored tokens
 	log.Println("Creating Gmail client")
-	gmailClient, err := gmailService.GmailClientFromStoredToken(r.Context(), h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET, accessToken,refreshToken)
+	gmailClient, err := gmailService.GmailClientFromStoredToken(r.Context(), h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET, accessToken, refreshToken, email, h.DB)
 	if err != nil {
 		log.Println("Failed to create Gmail client:", err)
 		http.Error(w, "failed to create gmail client: "+err.Error(), http.StatusInternalServerError)

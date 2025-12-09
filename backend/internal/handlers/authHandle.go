@@ -40,7 +40,7 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	googleOauthConfig := h.getGoogleOauthConfig()
-	url := googleOauthConfig.AuthCodeURL(OauthStateString, oauth2.AccessTypeOffline)
+	url := googleOauthConfig.AuthCodeURL(OauthStateString, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 	fmt.Println("Generated OAuth URL: ", url)
 	response := map[string]interface{}{
 		"success":   true,
@@ -110,12 +110,13 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userInfo := models.Student{
-		Name:          googleUser.Name,
-		SVVEmail:      googleUser.Email,
-		ProfilePic:    googleUser.Picture,
-		VerifiedEmail: googleUser.VerifiedEmail,
-		ORefreshToken: refreshToken,
-		OAccessToken:  token.AccessToken,
+		Name:               googleUser.Name,
+		SVVEmail:           googleUser.Email,
+		ProfilePic:         googleUser.Picture,
+		VerifiedEmail:      googleUser.VerifiedEmail,
+		ORefreshToken:      refreshToken,
+		OAccessToken:       token.AccessToken,
+		OAccessTokenExpiry: token.Expiry.Unix(),
 	}
 
 	var existingUser models.Student
@@ -236,14 +237,25 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 		return "", false, err
 	}
 
+	// Update the database with fresh OAuth tokens and expiry using explicit WHERE clause
+	err = h.DB.Model(&models.Student{}).
+		Where("svv_email = ?", userInfo.SVVEmail).
+		Updates(models.Student{
+			OAccessToken:       userInfo.OAccessToken,
+			ORefreshToken:      userInfo.ORefreshToken,
+			OAccessTokenExpiry: userInfo.OAccessTokenExpiry,
+		}).Error
+	if err != nil {
+		http.Error(w, "Failed to update tokens: "+err.Error(), http.StatusInternalServerError)
+		return "", false, err
+	}
+
 	token, err := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
 		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
 		return "", false, err
 	}
 
-	return token, true, nil
-	// json.NewEncoder(w).Encode(response)
 	return token, true, nil
 
 }

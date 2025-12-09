@@ -6,14 +6,15 @@ import (
 
 type Student struct {
 	gorm.Model
-	ID            string `json:"id" gorm:"primaryKey"`
-	Name          string `json:"name"`
-	SVVNetId      string `json:"svv_net_id" gorm:"unique"`
-	SVVEmail      string `json:"email" gorm:"unique"`
-	ProfilePic    string `json:"picture"`
-	VerifiedEmail bool   `json:"verified_email"`
-	ORefreshToken  string `json:"o_refresh_token"`
-	OAccessToken string `json:"o_access_token"`
+	ID                 string `json:"id" gorm:"primaryKey"`
+	Name               string `json:"name"`
+	SVVNetId           string `json:"svv_net_id" gorm:"unique"`
+	SVVEmail           string `json:"email" gorm:"unique"`
+	ProfilePic         string `json:"picture"`
+	VerifiedEmail      bool   `json:"verified_email"`
+	ORefreshToken      string `json:"o_refresh_token"`
+	OAccessToken       string `json:"o_access_token"`
+	OAccessTokenExpiry int64  `json:"o_access_token_expiry"` // Unix timestamp
 }
 
 type GoogleUser struct {
