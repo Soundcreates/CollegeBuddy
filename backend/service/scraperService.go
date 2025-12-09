@@ -45,6 +45,7 @@ func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID
 }
 
 func (gs *GmailService) ScrapeGmailEmails(ctx context.Context, student models.Student) ([]*gmail.Message, error) {
+	log.Println("Starting Gmail scraping for student:", student.SVVEmail)
 	if student.OAccessToken == "" {
 		return nil, fmt.Errorf("access token not found for student %s", student.SVVEmail)
 	}

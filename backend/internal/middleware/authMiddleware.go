@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"somaiya-ext/internal/auth"
@@ -9,8 +10,10 @@ import (
 
 func WithAuth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println("AuthMiddleware: Checking Authorization header")
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			log.Println("Middleware saying authHeader missing")
 			http.Error(w, "Authorization header required", http.StatusUnauthorized)
 			return
 		}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"somaiya-ext/internal/auth"
 	"somaiya-ext/internal/models"
@@ -141,8 +142,11 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 
 	if success {
 		// Create a simple HTML callback page that communicates with the extension
+		log.Println("Preparing OAuth success callback page")
+		log.Println("Generating JWT token for user:", userInfo.SVVEmail)
 		jwtToken, jwtErr := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
 		if jwtErr != nil {
+			log.Println("Error creating jwt token")
 			http.Error(w, "Failed to generate JWT token: "+jwtErr.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -262,32 +266,61 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo mode
 }
 
 // helper function to get student profile from JWT token
-func (h *Handler) Profile(token string) (map[string]interface{}, error) {
+func (h *Handler) Profile(w http.ResponseWriter, token string) (map[string]interface{}, error) {
 	// Parse JWT token to extract email
+	log.Println("Reached profile provider!")
+
+	log.Println("Parsing JWT token for profile retrieval")
+
 	claims, err := auth.ParseJwt(token, h.Config.JWT_SECRET)
 	if err != nil {
+		log.Println("Error parsing JWT token:", err.Error())
 		return nil, fmt.Errorf("invalid token: %v", err)
 	}
-
+	log.Println("JWT token parsed successfully")
+	log.Println("(Profile provider)=>Extracting email from token claims")
 	gmail, ok := claims["email"].(string)
 	if !ok {
 		return nil, fmt.Errorf("email not found in token claims")
 	}
+	log.Println("(Profile provider)=> Email extracted from token claims:", gmail)
 
 	var student models.Student
+	log.Println("(Profile provider)=> Querying database for student profile with email:", gmail)
 	err = h.DB.Where("svv_email = ?", gmail).First(&student).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Println("(Profile provider)=> Student not found in database")
 			return nil, fmt.Errorf("student not found")
 		}
+		log.Println("(Profile provider)=> Database query error:", err.Error())
 		return nil, fmt.Errorf("error querying user profile: %v", err)
 	}
+
+	log.Println("(Profile provider)=> Student profile retrieved successfully for email:", student.SVVEmail)
+	log.Printf("(Profile provider)=> OAuth Access Token (first 20 chars): %.20s...", student.OAccessToken)
+	log.Printf("(Profile provider)=> OAuth Refresh Token (first 20 chars): %.20s...", student.ORefreshToken)
 
 	response := map[string]interface{}{
 		"success": true,
 		"message": "Profile fetched successfully",
-		"user":    student,
+		"user": map[string]interface{}{
+			"id":              student.ID,
+			"name":            student.Name,
+			"svv_net_id":      student.SVVNetId,
+			"email":           student.SVVEmail,
+			"picture":         student.ProfilePic,
+			"verified_email":  student.VerifiedEmail,
+			"o_refresh_token": student.ORefreshToken,
+			"o_access_token":  student.OAccessToken,
+		},
 	}
+	log.Println("(Profile provider)=> Profile response prepared successfully")
 
 	return response, nil
+}
+
+// Helper function to parse JWT token using handler's config (for scraper handler)
+func (h *Handler) ParseJWTForScraping(tokenString string) (map[string]interface{}, error) {
+	return auth.ParseJwt(tokenString, h.Config.JWT_SECRET)
 }

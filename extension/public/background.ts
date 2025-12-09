@@ -142,10 +142,8 @@ async function scrapeGmail(token: string) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({
-        token: token  // Send token in body as your backend expects
-      })
     });
 
     if (!response.ok) {

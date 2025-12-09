@@ -29,14 +29,18 @@ func main() {
 	// Configure CORS to allow requests from your frontend
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
-			"http://localhost:5173", // Vite dev server
-			"chrome-extension://*",  // Chrome extension
+			"http://localhost:5173",                               // Vite dev server
+			"chrome-extension://jkbjennlilioelogocancfjnplomepcl", // Your Chrome extension
 		},
 		AllowedMethods: []string{
 			"GET", "POST", "PUT", "DELETE", "OPTIONS",
 		},
 		AllowedHeaders: []string{
-			"*",
+			"Content-Type",
+			"Authorization",
+		},
+		ExposedHeaders: []string{
+			"Content-Type",
 		},
 		AllowCredentials: true,
 	})
