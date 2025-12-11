@@ -13,6 +13,7 @@ interface OAuthMessage {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user?: any;
   token?: string;
+  refreshToken?: string;
 }
 
 // Listen for messages from popup
@@ -31,13 +32,16 @@ chrome.runtime.onMessage.addListener((message: OAuthMessage, sender, sendRespons
       {
         user: message.user,
         token: message.token,
+        refreshToken: message.refreshToken,
         isAuthenticated: true,
+        
       },
       () => {
         chrome.runtime.sendMessage({
           type: "USER_OAUTH_SUCCESSFUL",
           user: message.user,
-          token: message.token
+          token: message.token,
+          refreshToken: message.refreshToken
         });
         sendResponse({ success: true });
       }
@@ -75,13 +79,16 @@ chrome.runtime.onMessageExternal.addListener((message: OAuthMessage, sender, sen
       {
         user: message.user,
         token: message.token,
+        refreshToken: message.refreshToken,
         isAuthenticated: true,
+        
       },
       () => {
         chrome.runtime.sendMessage({
           type: "USER_OAUTH_SUCCESSFUL",
           user: message.user,
-          token: message.token
+          token: message.token,
+          refreshToken: message.refreshToken
         });
         sendResponse({ success: true });
       }

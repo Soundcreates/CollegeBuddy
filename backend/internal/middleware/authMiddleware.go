@@ -6,6 +6,8 @@ import (
 	"os"
 	"somaiya-ext/internal/auth"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func WithAuth(next http.HandlerFunc) http.HandlerFunc {
@@ -28,12 +30,18 @@ func WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		// Parse and validate JWT token
 		_, err := auth.ParseJwt(tokenString, os.Getenv("JWT_SECRET"))
 		if err != nil {
+			if err == jwt.ErrTokenExpired {
+				log.Println("Access token expired. Client should refresh token.")
+				http.Error(w, "Token expired. Please refresh your token.", http.StatusUnauthorized)
+				return
+			}
+			log.Println("Token validation failed:", err)
 			http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
 			return
 		}
-		
 
+		log.Println("Token validation successful")
 		// Token is valid, proceed to next handler
-		next.ServeHTTP(w,r)
+		next.ServeHTTP(w, r)
 	})
 }

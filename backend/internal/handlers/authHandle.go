@@ -124,7 +124,13 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			fmt.Println("Registering New User")
-			h.register(w, r, userInfo)
+			accessToken, refreshToken, success, regErr := h.register(w, r, userInfo)
+			if regErr != nil || !success {
+				fmt.Println("Registration failed, aborting...")
+				return
+			}
+			// Generate callback HTML for new user registration
+			h.generateCallbackHTML(w, userInfo, accessToken, refreshToken)
 			return
 		}
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
@@ -132,65 +138,16 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("Logging in Existing User")
-	_, success, err := h.login(w, r, userInfo)
+	accessToken, refreshToken, success, err := h.login(w, r, userInfo)
 
 	if err != nil || !success {
 		fmt.Println("Logging in failed,aborting...")
 		return
 	}
 
-	cfg := h.Config
-
-	if success {
-		// Create a simple HTML callback page that communicates with the extension
-		log.Println("Preparing OAuth success callback page")
-		log.Println("Generating JWT token for user:", userInfo.SVVEmail)
-		jwtToken, jwtErr := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
-		if jwtErr != nil {
-			log.Println("Error creating jwt token")
-			http.Error(w, "Failed to generate JWT token: "+jwtErr.Error(), http.StatusInternalServerError)
-			return
-		}
-		callbackHTML := fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>OAuth Callback</title>
-</head>
-<body>
-    <div id="status">Authentication successful! You can close this tab.</div>
-    <script>
-        // Send message to extension
-        if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-            const extensionId = '%s';
-            chrome.runtime.sendMessage(extensionId, {
-                type: 'OAUTH_SUCCESS',
-                user: %s,
-                token: '%s'
-            }, function(response) {
-                if (chrome.runtime.lastError) {
-                    console.log('Error:', chrome.runtime.lastError.message);
-                } else {
-                    console.log('Message sent to extension:', response);
-                    // Close the tab after successful communication
-                    window.close();
-                }
-            });
-        }
-        
-        // Fallback: redirect to extension popup
-        setTimeout(function() {
-            window.close();
-        }, 2000);
-    </script>
-</body>
-</html>`, cfg.EXTENSION_ID, `{"email":"`+userInfo.SVVEmail+`", "name":"`+userInfo.Name+`"}`, jwtToken)
-
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(callbackHTML))
-		return
-	}
+	// Generate callback HTML for existing user login
+	h.generateCallbackHTML(w, existingUser, accessToken, refreshToken)
+}
 	// Handle error case
 	errorHTML := fmt.Sprintf(`
 <!DOCTYPE html>
@@ -225,7 +182,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(errorHTML))
 }
 
-func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, bool, error) {
+func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, string, bool, error) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var foundStudent models.Student
@@ -234,7 +191,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 
 	if err != nil {
 		http.Error(w, "This User doesn't exist in database: "+err.Error(), http.StatusUnauthorized)
-		return "", false, err
+		return "", "", false, err
 	}
 
 	// Update the database with fresh OAuth tokens and expiry using explicit WHERE clause
@@ -247,34 +204,50 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 		}).Error
 	if err != nil {
 		http.Error(w, "Failed to update tokens: "+err.Error(), http.StatusInternalServerError)
-		return "", false, err
+		return "", "", false, err
 	}
-
-	token, err := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
+	//generate accessToken
+	jwtAccessToken, err := auth.GenerateAccessToken(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
-		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
-		return "", false, err
+		log.Println("Error in generating jwt access token")
+		http.Error(w, "Error in generating access jwt token "+err.Error(), http.StatusBadGateway)
+		return "", "", false, err
+	}
+	//generate refresh Token
+	jwtRefreshToken, jwtRefreshErr := auth.GenerateRefreshToken(userInfo, h.Config.JWT_SECRET)
+	if jwtRefreshErr != nil {
+		log.Println("Error generating Jwt refresh token")
+		http.Error(w,"Error in genrating refresh jwt token "+jwtRefreshErr.Error(), http.StatusBadGateway)
 	}
 
-	return token, true, nil
+	return jwtAccessToken, jwtRefreshToken, true, nil
 
 }
 
-func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, bool, error) {
+func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string,string, bool, error) {
 	// Create the user in database
 	result := h.DB.Create(&userInfo)
 	if result.Error != nil {
 		http.Error(w, "Failed to register user: "+result.Error.Error(), http.StatusInternalServerError)
-		return "", false, result.Error
+		return "", "",false, result.Error
 	}
-
-	token, err := auth.SignJWt(userInfo, h.Config.JWT_SECRET)
+		//generate accessToken
+	jwtAccessToken, err := auth.GenerateAccessToken(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
-		http.Error(w, "Error in jwt process "+err.Error(), http.StatusBadGateway)
-		return "", false, err
+		log.Println("Error in generating jwt access token")
+		http.Error(w, "Error in generating access jwt token "+err.Error(), http.StatusBadGateway)
+		return "", "",false, err
+	}
+	//generate refresh Token
+	jwtRefreshToken, jwtRefreshErr := auth.GenerateRefreshToken(userInfo, h.Config.JWT_SECRET)
+	if jwtRefreshErr!=nil{
+		log.Println("Error generating Jwt refresh token")
+		http.Error(w, "Error in genrating refresh jwt token "+jwtRefreshErr.Error(), http.StatusBadGateway)
 	}
 
-	return token, true, nil
+
+
+	return jwtAccessToken,jwtRefreshToken ,true, nil
 }
 
 // helper function to get student profile from JWT token
@@ -335,4 +308,125 @@ func (h *Handler) Profile(w http.ResponseWriter, token string) (map[string]inter
 // Helper function to parse JWT token using handler's config (for scraper handler)
 func (h *Handler) ParseJWTForScraping(tokenString string) (map[string]interface{}, error) {
 	return auth.ParseJwt(tokenString, h.Config.JWT_SECRET)
+}
+
+// RefreshToken handles refresh token requests
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var request struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if request.RefreshToken == "" {
+		http.Error(w, "Refresh token is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse and validate refresh token
+	claims, err := auth.ParseJwt(request.RefreshToken, h.Config.JWT_SECRET)
+	if err != nil {
+		log.Println("Invalid refresh token:", err)
+		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract email from refresh token
+	email, ok := claims["email"].(string)
+	if !ok {
+		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user from database
+	var user models.Student
+	err = h.DB.Where("svv_email = ?", email).First(&user).Error
+	if err != nil {
+		log.Println("User not found:", err)
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate new access token
+	newAccessToken, err := auth.GenerateAccessToken(user, h.Config.JWT_SECRET)
+	if err != nil {
+		log.Println("Failed to generate access token:", err)
+		http.Error(w, "Failed to generate access token", http.StatusInternalServerError)
+		return
+	}
+
+	// Optionally generate new refresh token (refresh token rotation)
+	newRefreshToken, err := auth.GenerateRefreshToken(user, h.Config.JWT_SECRET)
+	if err != nil {
+		log.Println("Failed to generate refresh token:", err)
+		http.Error(w, "Failed to generate refresh token", http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"success":       true,
+		"access_token":  newAccessToken,
+		"refresh_token": newRefreshToken,
+		"message":       "Token refreshed successfully",
+	}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+// Helper function to generate callback HTML for OAuth success
+func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {
+	cfg := h.Config
+
+	// Prepare user data with proper JSON formatting including ID
+	userJSON, _ := json.Marshal(map[string]interface{}{
+		"id":          user.ID,
+		"name":        user.Name,
+		"svv_email":   user.SVVEmail,
+		"profile_pic": user.ProfilePic,
+	})
+
+	callbackHTML := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth Callback</title>
+</head>
+<body>
+    <div id="status">Authentication successful! You can close this tab.</div>
+    <script>
+        // Send message to extension
+        if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+            const extensionId = '%s';
+            chrome.runtime.sendMessage(extensionId, {
+                type: 'OAUTH_SUCCESS',
+                user: %s,
+                token: '%s',
+                refreshToken: '%s'
+            }, function(response) {
+                if (chrome.runtime.lastError) {
+                    console.log('Error:', chrome.runtime.lastError.message);
+                } else {
+                    console.log('Message sent to extension:', response);
+                    // Close the tab after successful communication
+                    window.close();
+                }
+            });
+        }
+        
+        // Fallback: redirect to extension popup
+        setTimeout(function() {
+            window.close();
+        }, 2000);
+    </script>
+</body>
+</html>`, cfg.EXTENSION_ID, string(userJSON), accessToken, refreshToken)
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(callbackHTML))
 }

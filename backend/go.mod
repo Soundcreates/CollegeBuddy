@@ -7,6 +7,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/rs/cors v1.11.1
 	golang.org/x/oauth2 v0.33.0
+	google.golang.org/api v0.257.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
@@ -38,7 +39,6 @@ require (
 	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
-	google.golang.org/api v0.257.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251124214823-79d6a2a48846 // indirect
 	google.golang.org/grpc v1.77.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect

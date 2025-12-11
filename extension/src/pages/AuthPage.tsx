@@ -27,6 +27,7 @@ type  OAuthMessage = {
   type: string;
   user?: User;
   token?: string;
+  refreshToken?: string;
 }
 
 type  GmailScrapedMessage  = {
@@ -51,7 +52,7 @@ function AuthPage() {
     }
 
     // Check existing authentication
-    chrome.storage.local.get(["isAuthenticated", "user", "token"], (result) => {
+    chrome.storage.local.get(["isAuthenticated", "user", "token", "refreshToken"], (result) => {
       if (result.isAuthenticated && result.user && result.token) {
         setIsAuthenticated(true);
         setUser(result.user as User);
