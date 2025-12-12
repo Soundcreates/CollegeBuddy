@@ -147,7 +147,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 
 	// Generate callback HTML for existing user login
 	h.generateCallbackHTML(w, existingUser, accessToken, refreshToken)
-}
+
 	// Handle error case
 	errorHTML := fmt.Sprintf(`
 <!DOCTYPE html>
@@ -175,7 +175,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
         }, 3000);
     </script>
 </body>
-</html>`, cfg.EXTENSION_ID)
+</html>`, h.Config.EXTENSION_ID)
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
@@ -381,6 +381,12 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 // Helper function to generate callback HTML for OAuth success
 func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {
 	cfg := h.Config
+
+	if cfg.EXTENSION_ID == "" {
+		log.Println("EXTENSION_ID is not set; cannot notify extension of OAuth success")
+		http.Error(w, "Server misconfiguration: EXTENSION_ID is missing", http.StatusInternalServerError)
+		return
+	}
 
 	// Prepare user data with proper JSON formatting including ID
 	userJSON, _ := json.Marshal(map[string]interface{}{

@@ -1,5 +1,4 @@
 package handlers
-
 import (
 	"encoding/json"
 	"log"
@@ -7,7 +6,6 @@ import (
 	"somaiya-ext/service"
 	"strings"
 )
-
 func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -108,6 +106,15 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		log.Println("Failed to fetch emails:", err)
 		http.Error(w, "failed to fetch emails: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	
+	for i := range messages.Messages {
+		log.Printf("Fetched message ID: %s\n", messages.Messages[i].Id)
+		msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders([]string{"From", "To", "Subject", "Date"}).Do()
+		if err != nil {
+			log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
+			continue
+		}
 	}
 
 	// Return response
