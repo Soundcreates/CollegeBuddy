@@ -120,7 +120,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	var parsedMessages []ParsedMessage
 
 	for i := range messages.Messages {
-		log.Printf("Fetching message ID: %s\n", messages.Messages[i].Id)
+		log.Printf("Fetching  metadata of message ID: %s\n", messages.Messages[i].Id)
 		msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders("From", "To", "Subject", "Date").Do()
 		if err != nil {
 			log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
