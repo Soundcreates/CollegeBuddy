@@ -6,6 +6,16 @@ import (
 	"somaiya-ext/service"
 	"strings"
 )
+
+type ParsedMessage struct {
+	ID      string `json:"id"`
+	ThreadID string `json:"threadId"`
+	Subject string `json:"subject"`
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Date    string `json:"date"`
+}
+
 func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -107,21 +117,51 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to fetch emails: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+	var parsedMessages []ParsedMessage
+
 	for i := range messages.Messages {
-		log.Printf("Fetched message ID: %s\n", messages.Messages[i].Id)
-		msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders([]string{"From", "To", "Subject", "Date"}).Do()
+		log.Printf("Fetching message ID: %s\n", messages.Messages[i].Id)
+		msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders("From", "To", "Subject", "Date").Do()
 		if err != nil {
 			log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
 			continue
 		}
-	}
 
+		msgData := ParsedMessage{
+			ID:       msg.Id,
+			ThreadID: msg.ThreadId,
+		}
+
+		// Extract headers from the actual message payload
+		for _, h := range msg.Payload.Headers {
+			switch h.Name {
+			case "From":
+				msgData.From = h.Value
+			case "To":
+				msgData.To = h.Value
+			case "Subject":
+				msgData.Subject = h.Value
+			case "Date":
+				msgData.Date = h.Value
+			}
+		}
+
+		parsedMessages = append(parsedMessages, msgData)
+	}
+	
+	// Log sample of parsed messages
+	if len(parsedMessages) > 0 {
+		sampleCount := 3
+		if len(parsedMessages) < sampleCount {
+			sampleCount = len(parsedMessages)
+		}
+		log.Printf("Parsed %d messages, first %d: %+v\n", len(parsedMessages), sampleCount, parsedMessages[0:sampleCount])
+	}
 	// Return response
 	log.Println("Successfully fetched emails, preparing response")
 	response := map[string]interface{}{
 		"success":  true,
-		"messages": messages.Messages,
+		"messages": parsedMessages,
 		"count":    len(messages.Messages),
 	}
 	log.Println("Writing header")
