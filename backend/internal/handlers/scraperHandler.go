@@ -1,19 +1,21 @@
 package handlers
+
 import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"somaiya-ext/internal/models"
 	"somaiya-ext/service"
 	"strings"
 )
 
 type ParsedMessage struct {
-	ID      string `json:"id"`
+	ID       string `json:"id"`
 	ThreadID string `json:"threadId"`
-	Subject string `json:"subject"`
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Date    string `json:"date"`
+	Subject  string `json:"subject"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Date     string `json:"date"`
 }
 
 func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
@@ -22,13 +24,16 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	log.Println("HandleScrapeGmail called")
 
 	// Extract JWT token from Authorization header
+	log.Println("extracting token from Authorization header")
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		log.Println("Auth header missing")
 		http.Error(w, "missing authorization header", http.StatusUnauthorized)
 		return
 	}
-
+	log.Println("Authorization header found")
+	log.Println("Auth Header: ", authHeader)
+	log.Println("Removing Bearer prefix from token")
 	// Remove "Bearer " prefix
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 	if token == authHeader {
@@ -38,11 +43,15 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("Token extracted, validating JWT")
+	log.Println("Token: ", token)
 
-	// Validate JWT token first
+	// Extract email from the Authorization header token (middleware already validated it)
+	// Parse JWT to get email without re-validating (middleware did that)
 	claims, err := h.ParseJWTForScraping(token)
+	log.Println("Performed the ParseJWTForScraping function")
 	if err != nil {
-		log.Println("JWT validation failed:", err.Error())
+
+		log.Println("Failed to parse JWT:", err.Error())
 		http.Error(w, "invalid token: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -111,13 +120,13 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch emails from Gmail
 	log.Println("Fetching emails from Gmail")
-	messages, err := gmailClient.Users.Messages.List("me").MaxResults(10).Do()
+	messages, err := gmailClient.Users.Messages.List("me").MaxResults(100).Do()
 	if err != nil {
 		log.Println("Failed to fetch emails:", err)
 		http.Error(w, "failed to fetch emails: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var parsedMessages []ParsedMessage
+	var parsedMessages []models.GmailMessage
 
 	for i := range messages.Messages {
 		log.Printf("Fetching  metadata of message ID: %s\n", messages.Messages[i].Id)
@@ -127,9 +136,15 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		msgData := ParsedMessage{
+		svvEmail := ""
+		if email, ok := studentData["email"].(string); ok && email != "" {
+			svvEmail = email
+		}
+
+		msgData := models.GmailMessage{
 			ID:       msg.Id,
 			ThreadID: msg.ThreadId,
+			Student:  svvEmail,
 		}
 
 		// Extract headers from the actual message payload
@@ -148,7 +163,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 
 		parsedMessages = append(parsedMessages, msgData)
 	}
-	
+
 	// Log sample of parsed messages
 	if len(parsedMessages) > 0 {
 		sampleCount := 3
@@ -158,6 +173,14 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Parsed %d messages, first %d: %+v\n", len(parsedMessages), sampleCount, parsedMessages[0:sampleCount])
 	}
 	// Return response
+	//also send it to db logic func
+	log.Println("starting to store the gmailmessages in DB")
+	if err, _ := service.StoreGmailMessages(h.DB, email, parsedMessages); err != nil {
+		log.Println("Failed to store messages in DB:", err)
+	} else {
+		log.Println("Messages stored in DB successfully")
+	}
+
 	log.Println("Successfully fetched emails, preparing response")
 	response := map[string]interface{}{
 		"success":  true,

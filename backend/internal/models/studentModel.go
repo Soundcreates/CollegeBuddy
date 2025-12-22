@@ -9,7 +9,7 @@ type Student struct {
 	ID                 string `json:"id" gorm:"primaryKey"`
 	Name               string `json:"name"`
 	SVVNetId           string `json:"svv_net_id" gorm:"unique"`
-	SVVEmail           string `json:"email" gorm:"unique"`
+	SVVEmail           string `json:"email" gorm:"column:svv_email;unique"`
 	ProfilePic         string `json:"picture"`
 	VerifiedEmail      bool   `json:"verified_email"`
 	ORefreshToken      string `json:"o_refresh_token"`

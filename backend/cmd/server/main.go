@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/rs/cors"
+	"log"
 	"net/http"
 	config "somaiya-ext/configs"
 	handler "somaiya-ext/internal/handlers"
 	"somaiya-ext/internal/models"
 	routes "somaiya-ext/internal/router"
-
-	"github.com/rs/cors"
 )
 
 func main() {
@@ -19,8 +19,8 @@ func main() {
 	if err != nil {
 		fmt.Printf("%s", err)
 	}
-	db.AutoMigrate(&models.Student{})
-
+	db.AutoMigrate(&models.Student{}, &models.GmailMessage{})
+	log.Println("Database migrated successfully")
 	handler := handler.NewHandler(db, cfg)
 
 	//this is the main Router

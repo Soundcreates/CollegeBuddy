@@ -311,36 +311,24 @@ func (h *Handler) ParseJWTForScraping(tokenString string) (map[string]interface{
 }
 
 // RefreshToken handles refresh token requests
-func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]interface{}){
 
-	var request struct {
-		RefreshToken string `json:"refresh_token"`
-	}
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if request.RefreshToken == "" {
-		http.Error(w, "Refresh token is required", http.StatusBadRequest)
-		return
+	if refreshToken == "" {
+		return  fmt.Errorf("refresh token is required"), false	
 	}
 
 	// Parse and validate refresh token
-	claims, err := auth.ParseJwt(request.RefreshToken, h.Config.JWT_SECRET)
+	claims, err := auth.ParseJwt(refreshToken, h.Config.JWT_SECRET)
 	if err != nil {
 		log.Println("Invalid refresh token:", err)
-		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
-		return
+		return err, false, nil
 	}
 
 	// Extract email from refresh token
 	email, ok := claims["email"].(string)
 	if !ok {
-		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-		return
+		return fmt.Errorf("email not found in token claims"), false, nil
 	}
 
 	// Get user from database
@@ -348,24 +336,21 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	err = h.DB.Where("svv_email = ?", email).First(&user).Error
 	if err != nil {
 		log.Println("User not found:", err)
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
+		return err, false , nil
 	}
 
 	// Generate new access token
 	newAccessToken, err := auth.GenerateAccessToken(user, h.Config.JWT_SECRET)
 	if err != nil {
 		log.Println("Failed to generate access token:", err)
-		http.Error(w, "Failed to generate access token", http.StatusInternalServerError)
-		return
+		return err, false , nil
 	}
 
 	// Optionally generate new refresh token (refresh token rotation)
 	newRefreshToken, err := auth.GenerateRefreshToken(user, h.Config.JWT_SECRET)
 	if err != nil {
 		log.Println("Failed to generate refresh token:", err)
-		http.Error(w, "Failed to generate refresh token", http.StatusInternalServerError)
-		return
+		return err, false, nil
 	}
 
 	response := map[string]interface{}{
@@ -375,7 +360,8 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		"message":       "Token refreshed successfully",
 	}
 
-	json.NewEncoder(w).Encode(response)
+	log.Println("Token refreshed successfully for user:", email)
+	return nil, true, response
 }
 
 // Helper function to generate callback HTML for OAuth success
