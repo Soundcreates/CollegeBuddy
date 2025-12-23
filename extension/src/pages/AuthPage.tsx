@@ -80,12 +80,17 @@ function AuthPage() {
           setGmailData(gmailMessage.data);
           setScrapingLoading(false);
         }
+        chrome.runtime.sendMessage({type:"SEND_TO_KEEP"});
+        console.log("Sent message to background worker");
       }
 
       if (message.type === "GMAIL_SCRAPE_ERROR") {
         const gmailMessage = message as GmailScrapedMessage;
         console.error("Gmail scrape error:", gmailMessage.error);
         setScrapingLoading(false);
+      }
+      if(message.type==="SEND_TO_KEEP_SUCCESS"){
+        console.log("Data sent to google keep ");
       }
     };
 

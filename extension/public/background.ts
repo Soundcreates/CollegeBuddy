@@ -16,6 +16,8 @@ interface OAuthMessage {
   refreshToken?: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_MODE === 'development' ? import.meta.env.VITE_API_BASE_URL : import.meta.env.VITE_API_PROD_URL;
+
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((message: OAuthMessage, sender, sendResponse) => {
   console.log("Message received in background:", message);
@@ -65,6 +67,25 @@ chrome.runtime.onMessage.addListener((message: OAuthMessage, sender, sendRespons
       }
     });
     return true; // Keep message channel open for async response
+  }
+
+  if (message.type === "SEND_TO_KEEP") {
+    chrome.storage.local.get(["user","token"], (result) => {
+      if (result.user && result.token) {
+        console.log(result.user);
+        const userEmail = result.user.svv_email as string;
+        sendKeep(userEmail,result.token)
+          .then((response) => {
+            sendResponse({ success: true, data: response });
+          })
+          .catch((error) => {
+            sendResponse({ success: false, error: error.message });
+          });
+      } else {
+        sendResponse({ success: false, error: "No user found" });
+      }
+    });
+    return true;
   }
 });
 
@@ -185,4 +206,42 @@ async function scrapeGmail(token: string) {
     
     throw error;
   }
+}
+
+async function sendKeep(gmail: string, token: string): Promise<unknown> {
+  console.log("SendKeep function called");
+  try{
+
+    console.log("Starting send to keep...");
+    const response = await fetch(`${API_BASE_URL}/api/scrape/createNote`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({gmail})
+    })
+    if(response.ok){
+      console.log("Send to keep successful");
+      // Notify popup that sending to keep is complete
+      chrome.runtime.sendMessage({
+        type: "SEND_TO_KEEP_SUCCESS",
+      });
+      return {success: true};
+    }
+
+ }catch(error){
+    console.error("sendKeep error:", error);
+    const errorMessage = error instanceof Error? error.message : "Unknown error";
+    //notifying the popup about the error
+    chrome.runtime.sendMessage({
+      type: "SEND_TO_KEEP_ERROR",
+      error: errorMessage,
+    });
+
+    
+   throw error;
+  }
+    
+  // TODO: Implement Google Keep functionality
+  throw new Error("sendKeep not yet implemented");
 }
