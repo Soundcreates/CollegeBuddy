@@ -169,7 +169,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
                 window.close();
             });
         }
-        
+
         setTimeout(function() {
             window.close();
         }, 3000);
@@ -217,37 +217,53 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 	jwtRefreshToken, jwtRefreshErr := auth.GenerateRefreshToken(userInfo, h.Config.JWT_SECRET)
 	if jwtRefreshErr != nil {
 		log.Println("Error generating Jwt refresh token")
-		http.Error(w,"Error in genrating refresh jwt token "+jwtRefreshErr.Error(), http.StatusBadGateway)
+		http.Error(w, "Error in genrating refresh jwt token "+jwtRefreshErr.Error(), http.StatusBadGateway)
 	}
 
+	err = h.DB.Model(&models.Student{}).Where("svv_email = ?", userInfo.SVVEmail).Updates(models.Student{
+		JWTToken:   jwtAccessToken,
+		JWTRefresh: jwtRefreshToken,
+	}).Error
+	if err != nil {
+		log.Println("Error assigning jwt to the model")
+		http.Error(w, "Error assigning the jwt to the user", http.StatusExpectationFailed)
+		return "", "", false, err
+	}
 	return jwtAccessToken, jwtRefreshToken, true, nil
 
 }
 
-func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string,string, bool, error) {
+func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, string, bool, error) {
 	// Create the user in database
-	result := h.DB.Create(&userInfo)
-	if result.Error != nil {
-		http.Error(w, "Failed to register user: "+result.Error.Error(), http.StatusInternalServerError)
-		return "", "",false, result.Error
-	}
-		//generate accessToken
+	//generate accessToken
 	jwtAccessToken, err := auth.GenerateAccessToken(userInfo, h.Config.JWT_SECRET)
 	if err != nil {
 		log.Println("Error in generating jwt access token")
 		http.Error(w, "Error in generating access jwt token "+err.Error(), http.StatusBadGateway)
-		return "", "",false, err
+		return "", "", false, err
 	}
 	//generate refresh Token
 	jwtRefreshToken, jwtRefreshErr := auth.GenerateRefreshToken(userInfo, h.Config.JWT_SECRET)
-	if jwtRefreshErr!=nil{
+	if jwtRefreshErr != nil {
 		log.Println("Error generating Jwt refresh token")
 		http.Error(w, "Error in genrating refresh jwt token "+jwtRefreshErr.Error(), http.StatusBadGateway)
 	}
+	result := h.DB.Create(&userInfo)
+	if result.Error != nil {
+		http.Error(w, "Failed to register user: "+result.Error.Error(), http.StatusInternalServerError)
+		return "", "", false, result.Error
+	}
+	err = h.DB.Model(&models.Student{}).Where("svv_email = ?", userInfo.SVVEmail).Updates(models.Student{
+		JWTToken:   jwtAccessToken,
+		JWTRefresh: jwtRefreshToken,
+	}).Error
+	if err != nil {
+		log.Println("Failed to insert jwtToken and jwtRefresh into the users model")
+		http.Error(w, "Failed with jwt assigning", http.StatusExpectationFailed)
+		return "", "", false, err
+	}
 
-
-
-	return jwtAccessToken,jwtRefreshToken ,true, nil
+	return jwtAccessToken, jwtRefreshToken, true, nil
 }
 
 // helper function to get student profile from JWT token
@@ -310,12 +326,11 @@ func (h *Handler) ParseJWTForScraping(tokenString string) (map[string]interface{
 	return auth.ParseJwt(tokenString, h.Config.JWT_SECRET)
 }
 
-// RefreshToken handles refresh token requests
-func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]interface{}){
-
+// RefreshToken handles refresh token requests (JWT)
+func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]interface{}) {
 
 	if refreshToken == "" {
-		return  fmt.Errorf("refresh token is required"), false	
+		return fmt.Errorf("refresh token is required"), false, nil
 	}
 
 	// Parse and validate refresh token
@@ -336,14 +351,14 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 	err = h.DB.Where("svv_email = ?", email).First(&user).Error
 	if err != nil {
 		log.Println("User not found:", err)
-		return err, false , nil
+		return err, false, nil
 	}
 
 	// Generate new access token
 	newAccessToken, err := auth.GenerateAccessToken(user, h.Config.JWT_SECRET)
 	if err != nil {
 		log.Println("Failed to generate access token:", err)
-		return err, false , nil
+		return err, false, nil
 	}
 
 	// Optionally generate new refresh token (refresh token rotation)
@@ -409,7 +424,7 @@ func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Studen
                 }
             });
         }
-        
+
         // Fallback: redirect to extension popup
         setTimeout(function() {
             window.close();

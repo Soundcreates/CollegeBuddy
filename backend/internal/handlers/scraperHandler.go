@@ -119,8 +119,11 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch emails from Gmail
+	limit := 10
 	log.Println("Fetching emails from Gmail")
-	messages, err := gmailClient.Users.Messages.List("me").MaxResults(100).Do()
+	messages, err := gmailClient.Users.Messages.List("me").MaxResults(int64(limit)).Do()
+	log.Printf("Fetching for %d mails", limit)
+
 	if err != nil {
 		log.Println("Failed to fetch emails:", err)
 		http.Error(w, "failed to fetch emails: "+err.Error(), http.StatusInternalServerError)

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	config "somaiya-ext/configs"
 	"somaiya-ext/internal/models"
 
@@ -44,6 +45,7 @@ func NewKeepService(student models.Student, cfg *config.Config) (*keep.Service, 
 }
 
 func CreateKeepNote(student models.Student, cfg *config.Config, title, content string) error {
+	log.Println("Reached CreateKeepNote")
 	srv, err := NewKeepService(student, cfg)
 	if err != nil {
 		return err

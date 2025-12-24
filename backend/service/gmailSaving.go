@@ -19,20 +19,24 @@ func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.Gmai
 	log.Println("Student found:", student.SVVEmail)
 
 	log.Println("Filtering the email messages before storing")
-	mailsToStore , err:= FilterMails(messages)
+	mailsToStore, err := FilterMails(messages)
 	if err != nil {
 		log.Println("Error filtering mails:", err.Error())
 		return err, false
 	}
 	// Now, store each GmailMessage associated with the student
 	for _, msg := range mailsToStore {
-		log.Println("Storing message ID:", msg.ID)
-	// msg.Student should be set to student's email before saving
+
+		var existingMail models.GmailMessage
+		// msg.Student should be set to student's email before saving
 		msg.Student = student.SVVEmail
-		if err := db.Find(&models.GmailMessage{}).Where("id = ?", msg.ID).Error; err != nil {
-			log.Printf("Message ID %s already exists, skipping\n", msg.ID)
+		log.Printf("Checking if message %s already exists", msg.ThreadID)
+
+		if err := db.Where("thread_id = ? ", msg.ThreadID).Find(&existingMail).Error; err == nil {
+			log.Printf("Message Id: %s already exists in the database, so not storing it.")
 			continue
 		}
+		log.Println("Now since the message doesnt already exist in the db, we will be storing them..")
 		if err := db.Create(&msg).Error; err != nil {
 			log.Fatalf("Error storing message ID %s: %v", msg.ID, err)
 			return err, false
@@ -45,12 +49,7 @@ func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.Gmai
 	return nil, true
 }
 
-
-
-
-
 func FilterMails(messages []models.GmailMessage) ([]models.GmailMessage, error) {
-
 
 	var filteredMessages []models.GmailMessage
 	for _, msg := range messages {
@@ -58,14 +57,14 @@ func FilterMails(messages []models.GmailMessage) ([]models.GmailMessage, error) 
 		score := 0.0
 		signals := []string{}
 
-		suffixToCheck:= "somaiya.edu"
+		suffixToCheck := "somaiya.edu"
 
-		if strings.HasSuffix(msg.From,suffixToCheck) {
+		if strings.HasSuffix(msg.From, suffixToCheck) {
 			score += 0.5
 			signals = append(signals, "edu_domain")
 		}
 
-		keywords := []string{"exam", "assignment", "lecture", "professor", "results", "syllabus", "semester", "university", "campus", "somaiya","computer", "engineering"}
+		keywords := []string{"exam", "assignment", "lecture", "professor", "results", "syllabus", "semester", "university", "campus", "somaiya", "computer", "engineering"}
 		for _, k := range keywords {
 			if strings.Contains(strings.ToLower(msg.Subject), k) {
 				score += 0.2
@@ -73,17 +72,15 @@ func FilterMails(messages []models.GmailMessage) ([]models.GmailMessage, error) 
 			}
 		}
 
-		IsUniversity := score >=0.6
-		if(IsUniversity){
+		IsUniversity := score >= 0.6
+		if IsUniversity {
 
 			filteredMessages = append(filteredMessages, msg)
-		}else{
-			continue;
+		} else {
+			continue
 		}
 
-
-		
 	}
 
-	return filteredMessages, nil		
+	return filteredMessages, nil
 }
