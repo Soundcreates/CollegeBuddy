@@ -178,13 +178,15 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	// Return response
 	//also send it to db logic func
 	log.Println("starting to store the gmailmessages in DB")
-	if err, _ := service.StoreGmailMessages(h.DB, email, parsedMessages); err != nil {
+	err, _, _ = service.StoreGmailMessages(h.DB, email, parsedMessages)
+	if err != nil {
 		log.Println("Failed to store messages in DB:", err)
 	} else {
 		log.Println("Messages stored in DB successfully")
 	}
+	log.Println("Creating a note instance for keep api")
+	log.Println("Successfully fetched emails, Sending to keep service")
 
-	log.Println("Successfully fetched emails, preparing response")
 	response := map[string]interface{}{
 		"success":  true,
 		"messages": parsedMessages,

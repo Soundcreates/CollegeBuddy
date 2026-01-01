@@ -8,21 +8,22 @@ import (
 	"gorm.io/gorm"
 )
 
-func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.GmailMessage) (error, bool) {
+func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.GmailMessage) (error, bool, []models.GmailMessage) {
 	//first , find the student by email
 	log.Println("Reached the gmail storing service function")
 	var student models.Student
 	if err := db.Where("svv_email = ?", studentEmail).First(&student).Error; err != nil {
 		log.Println("Error finding student:", err.Error())
-		return err, false
+		return err, false, nil
 	}
 	log.Println("Student found:", student.SVVEmail)
 
 	log.Println("Filtering the email messages before storing")
+	var dummy []models.GmailMessage //send this for errors
 	mailsToStore, err := FilterMails(messages)
 	if err != nil {
 		log.Println("Error filtering mails:", err.Error())
-		return err, false
+		return err, false, dummy
 	}
 	// Now, store each GmailMessage associated with the student
 	for _, msg := range mailsToStore {
@@ -39,14 +40,14 @@ func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.Gmai
 		log.Println("Now since the message doesnt already exist in the db, we will be storing them..")
 		if err := db.Create(&msg).Error; err != nil {
 			log.Fatalf("Error storing message ID %s: %v", msg.ID, err)
-			return err, false
+			return err, false, dummy
 		}
 		log.Printf("Message ID %s stored successfully\n", msg.ID)
 	}
 
 	log.Println("All messages processed for student:", student.SVVEmail)
 
-	return nil, true
+	return nil, true, mailsToStore
 }
 
 func FilterMails(messages []models.GmailMessage) ([]models.GmailMessage, error) {
