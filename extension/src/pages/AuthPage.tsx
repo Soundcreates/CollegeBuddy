@@ -3,45 +3,62 @@
 import { useState, useEffect } from "react";
 import Dashboard from "./Dashboard";
 import { scrapeGmailEmails } from "../api/googleApi";
+import type { GmailMessage } from "../types/types";
 interface User {
-  id: number;
+  id: string;
   name: string;
   svv_email: string;
   profile_pic: string;
 }
 
-interface GmailData {
-  messages: Array<{
-    id: string;
-    subject: string;
-    from: string;
-    date: string;
-    body: string;
-    snippet: string;
-  }>;
-  nextPageToken?: string;
-  resultSizeEstimate: number;
-}
 
-type  OAuthMessage = {
+
+type OAuthMessage = {
   type: string;
   user?: User;
   token?: string;
   refreshToken?: string;
-}
+};
 
-type  GmailScrapedMessage  = {
-    type: string;
-    data?: GmailData;
-    error?: string;
-}
+type GmailMessageType = {
+  type: string;
+  data: {
+    success: boolean;
+    messages: GmailMessage[];
+    count: number;
+  };
+  error?: string;
+};
+
 function AuthPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
-  const [gmailData, setGmailData] = useState<GmailData | null>(null);
+  const [gmailData, setGmailData] = useState<GmailMessage[] | null>([]);
   const [scrapingLoading, setScrapingLoading] = useState(false);
+
+  const handleGmailScrape = async () => {
+    try {
+      setScrapingLoading(true);
+      console.log("Starting Gmail scraping...");
+      const gmailResult = await scrapeGmailEmails();
+      
+      if (gmailResult.success && gmailResult.messages) {
+        setGmailData(gmailResult.messages);
+        console.log("Gmail data received:", gmailResult.messages);
+
+        // Store in chrome storage for persistence
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          chrome.storage.local.set({ gmailData: gmailResult.messages });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to scrape Gmail:", error);
+    } finally {
+      setScrapingLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Check if we're in a Chrome extension environment
@@ -52,18 +69,21 @@ function AuthPage() {
     }
 
     // Check existing authentication
-    chrome.storage.local.get(["isAuthenticated", "user", "token", "refreshToken"], (result) => {
-      if (result.isAuthenticated && result.user && result.token) {
-        setIsAuthenticated(true);
-        setUser(result.user as User);
-        // Start Gmail scraping only after confirming authentication
-        handleGmailScrape();
-      }
-      setLoading(false);
-    });
+    chrome.storage.local.get(
+      ["isAuthenticated", "user", "token", "refreshToken"],
+      (result) => {
+        if (result.isAuthenticated && result.user && result.token) {
+          setIsAuthenticated(true);
+          setUser(result.user as User);
+          // Start Gmail scraping only after confirming authentication
+          handleGmailScrape();
+        }
+        setLoading(false);
+      },
+    );
 
     // Listen for authentication success
-    const messageListener = (message: OAuthMessage | GmailScrapedMessage) => {
+    const messageListener = (message: OAuthMessage | GmailMessageType) => {
       if (message.type === "USER_OAUTH_SUCCESSFUL") {
         const oauthMessage = message as OAuthMessage;
         setIsAuthenticated(true);
@@ -74,23 +94,19 @@ function AuthPage() {
       }
 
       if (message.type === "GMAIL_SCRAPE_SUCCESS") {
-        const gmailMessage = message as GmailScrapedMessage;
+        const gmailMessage = message as GmailMessageType;
         console.log("Gmail scrape successful:", gmailMessage.data);
-        if (gmailMessage.data) {
-          setGmailData(gmailMessage.data);
+        if (gmailMessage.data && gmailMessage.data.messages) {
+          setGmailData(gmailMessage.data.messages);
           setScrapingLoading(false);
         }
-        chrome.runtime.sendMessage({type:"SEND_TO_KEEP"});
         console.log("Sent message to background worker");
       }
 
       if (message.type === "GMAIL_SCRAPE_ERROR") {
-        const gmailMessage = message as GmailScrapedMessage;
+        const gmailMessage = message as GmailMessageType;
         console.error("Gmail scrape error:", gmailMessage.error);
         setScrapingLoading(false);
-      }
-      if(message.type==="SEND_TO_KEEP_SUCCESS"){
-        console.log("Data sent to google keep ");
       }
     };
 
@@ -100,25 +116,6 @@ function AuthPage() {
       chrome.runtime.onMessage.removeListener(messageListener);
     };
   }, []); // Remove isAuthenticated dependency to avoid infinite loops
-
-  const handleGmailScrape = async () => {
-    try {
-      setScrapingLoading(true);
-      console.log("Starting Gmail scraping...");
-      const gmailResult = await scrapeGmailEmails();
-      setGmailData(gmailResult);
-      console.log("Gmail data received:", gmailResult);
-      
-      // Store in chrome storage for persistence
-      if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.set({ gmailData: gmailResult });
-      }
-    } catch (error) {
-      console.error("Failed to scrape Gmail:", error);
-    } finally {
-      setScrapingLoading(false);
-    }
-  };
 
   const handleGoogleLogin = () => {
     console.log("Starting Google OAuth...");
@@ -167,8 +164,8 @@ function AuthPage() {
 
   if (isAuthenticated && user) {
     return (
-      <Dashboard 
-        user={user} 
+      <Dashboard
+        user={user}
         onLogout={handleLogout}
         gmailData={gmailData}
         scrapingLoading={scrapingLoading}

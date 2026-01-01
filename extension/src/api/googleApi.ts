@@ -1,4 +1,5 @@
 import server from "./backendApi";
+import type { GmailMessage } from "../types/types";
 
 async function handleGoogleAuth() {
     try {
@@ -22,20 +23,13 @@ async function handleGoogleAuth() {
 }
 
 
-interface GmailData {
-  messages: Array<{
-    id: string;
-    subject: string;
-    from: string;
-    date: string;
-    body: string;
-    snippet: string;
-  }>;
-  nextPageToken?: string;
-  resultSizeEstimate: number;
+interface GmailScrapeResponse {
+  success: boolean;
+  messages: GmailMessage[];
+  count: number;
 }
 
-async function scrapeGmailEmails(): Promise<GmailData> {
+async function scrapeGmailEmails(): Promise<GmailScrapeResponse> {
     return new Promise((resolve, reject) => {
         if (typeof chrome !== "undefined" && chrome.runtime) {
             chrome.runtime.sendMessage(
