@@ -1,4 +1,5 @@
 /// <reference types = "chrome" />
+import type { GmailMessage } from "../src/types/types";
 
 console.log("Background script loaded!");
 
@@ -22,6 +23,22 @@ const API_BASE_URL =
     : import.meta.env.VITE_API_PROD_URL;
 
 // Listen for messages from popup
+
+chrome.runtime.onInstalled.addListener(() => {
+  const now = new Date();
+  const nextMorning = new Date();
+
+  nextMorning.setHours(8, 0, 0, 0);
+  if (now > nextMorning) {
+    nextMorning.setDate(nextMorning.getDate() + 1);
+  }
+
+  chrome.alarms.create("dailyGmailScrape", {
+    when: nextMorning.getTime(),
+    periodInMinutes: 24 * 60,
+  });
+});
+
 chrome.runtime.onMessage.addListener(
   (message: OAuthMessage, sender, sendResponse) => {
     console.log("Message received in background:", message);
@@ -79,6 +96,33 @@ chrome.runtime.onMessage.addListener(
     }
   },
 );
+
+//cron for daily gmail scrape
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name != "dailyGmailScrape") return;
+
+  console.log("Daily Gmail scrape alarm triggered:", alarm);
+  //extracting token from the storage
+  chrome.storage.local.get(["token"], async (result) => {
+    if (!result.token || typeof result.token !== "string") {
+      console.error("No OAuth token found. Cannot perform daily Gmail scrape.");
+      return;
+    }
+
+    console.log("Starting daily Gmail scrape with stored token.");
+    try {
+      const response = await scrapeGmail(result.token as string);
+      console.log("Daily Gmail scrape completed successfully:", response);
+      chrome.storage.local.set({
+        inboxTasks: response,
+      });
+    } catch (e: any) {
+      console.error("Error during daily Gmail scrape:", e.message);
+      return;
+    }
+  });
+});
 
 // Listen for messages from external pages (the callback page)
 chrome.runtime.onMessageExternal.addListener(
@@ -158,7 +202,7 @@ async function handleOAuth(sendResponse: (response: OAuthResponse) => void) {
   }
 }
 
-async function scrapeGmail(token: string) {
+async function scrapeGmail(token: string): Promise<GmailMessage[]> {
   try {
     console.log("Starting gmail scraping...");
 
@@ -179,16 +223,23 @@ async function scrapeGmail(token: string) {
 
     // Store the scraped emails in chrome storage for  extension to access
     chrome.storage.local.set({
-      gmailData: data,
+      inboxTasks: data,
       lastScrapeTime: new Date().toISOString(),
     });
 
     // Notify popup that scraping is complete
     chrome.runtime.sendMessage({
       type: "GMAIL_SCRAPE_SUCCESS",
-      data: data,
+      data: {
+        success: true,
+        messages: data,
+        count: data.length || 0,
+      },
     });
-
+    console.log(
+      "Checking the subject of the response to check if its of the correct data type: ",
+      data.subject,
+    );
     return data;
   } catch (error) {
     console.error("Gmail scraping error:", error);

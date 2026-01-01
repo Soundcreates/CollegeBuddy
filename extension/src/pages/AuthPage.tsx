@@ -11,8 +11,6 @@ interface User {
   profile_pic: string;
 }
 
-
-
 type OAuthMessage = {
   type: string;
   user?: User;
@@ -43,14 +41,14 @@ function AuthPage() {
       setScrapingLoading(true);
       console.log("Starting Gmail scraping...");
       const gmailResult = await scrapeGmailEmails();
-      
+
       if (gmailResult.success && gmailResult.messages) {
         setGmailData(gmailResult.messages);
         console.log("Gmail data received:", gmailResult.messages);
 
         // Store in chrome storage for persistence
         if (typeof chrome !== "undefined" && chrome.storage) {
-          chrome.storage.local.set({ gmailData: gmailResult.messages });
+          chrome.storage.local.set({ inboxTasks: gmailResult.messages });
         }
       }
     } catch (error) {
@@ -70,13 +68,13 @@ function AuthPage() {
 
     // Check existing authentication
     chrome.storage.local.get(
-      ["isAuthenticated", "user", "token", "refreshToken"],
+      ["isAuthenticated", "user", "token", "refreshToken", "inboxTasks"],
       (result) => {
         if (result.isAuthenticated && result.user && result.token) {
           setIsAuthenticated(true);
           setUser(result.user as User);
           // Start Gmail scraping only after confirming authentication
-          handleGmailScrape();
+          setGmailData((result.inboxTasks as GmailMessage[]) || null);
         }
         setLoading(false);
       },
@@ -112,8 +110,25 @@ function AuthPage() {
 
     chrome.runtime.onMessage.addListener(messageListener);
 
+    // Listen for storage changes (e.g., from cron job updates)
+    const storageListener = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string,
+    ) => {
+      if (areaName === "local" && changes.inboxTasks) {
+        console.log(
+          "inboxTasks updated in storage:",
+          changes.inboxTasks.newValue,
+        );
+        setGmailData((changes.inboxTasks.newValue as GmailMessage[]) || null);
+      }
+    };
+
+    chrome.storage.onChanged.addListener(storageListener);
+
     return () => {
       chrome.runtime.onMessage.removeListener(messageListener);
+      chrome.storage.onChanged.removeListener(storageListener);
     };
   }, []); // Remove isAuthenticated dependency to avoid infinite loops
 
