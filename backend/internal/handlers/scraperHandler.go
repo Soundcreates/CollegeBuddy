@@ -175,21 +175,18 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Parsed %d messages, first %d: %+v\n", len(parsedMessages), sampleCount, parsedMessages[0:sampleCount])
 	}
-	// Return response
-	//also send it to db logic func
-	log.Println("starting to store the gmailmessages in DB")
-	err, _, _ = service.StoreGmailMessages(h.DB, email, parsedMessages)
+	// filtering mails
+	log.Println("Filtering mails to be sent to extension")
+	filteredMails, err := service.FilterSomaiyaMails(parsedMessages)
 	if err != nil {
-		log.Println("Failed to store messages in DB:", err)
-	} else {
-		log.Println("Messages stored in DB successfully")
+		log.Println("Error happened while filtering mails")
 	}
-	log.Println("Creating a note instance for keep api")
-	log.Println("Successfully fetched emails, Sending to keep service")
+	log.Println("Mails filtered successfully")
 
+	//returning response
 	response := map[string]interface{}{
 		"success":  true,
-		"messages": parsedMessages,
+		"messages": filteredMails,
 		"count":    len(messages.Messages),
 	}
 	log.Println("Writing header")

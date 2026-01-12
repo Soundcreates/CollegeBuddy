@@ -74,7 +74,8 @@ function AuthPage() {
           setIsAuthenticated(true);
           setUser(result.user as User);
           // Start Gmail scraping only after confirming authentication
-          setGmailData((result.inboxTasks as GmailMessage[]) || null);
+          const tasks = result.inboxTasks;
+          setGmailData(Array.isArray(tasks) ? tasks : null);
         }
         setLoading(false);
       },
@@ -110,17 +111,34 @@ function AuthPage() {
 
     chrome.runtime.onMessage.addListener(messageListener);
 
+
     // Listen for storage changes (e.g., from cron job updates)
     const storageListener = (
       changes: { [key: string]: chrome.storage.StorageChange },
       areaName: string,
     ) => {
-      if (areaName === "local" && changes.inboxTasks) {
-        console.log(
-          "inboxTasks updated in storage:",
-          changes.inboxTasks.newValue,
-        );
-        setGmailData((changes.inboxTasks.newValue as GmailMessage[]) || null);
+      if (areaName === "local") {
+        if (changes.inboxTasks) {
+          console.log(
+            "inboxTasks updated in storage:",
+            changes.inboxTasks.newValue,
+          );
+          const newTasks = changes.inboxTasks.newValue;
+          setGmailData(Array.isArray(newTasks) ? newTasks : null);
+        }
+
+        if (
+          (changes.isAuthenticated && !changes.isAuthenticated.newValue) ||
+          (changes.token && !changes.token.newValue)
+        ) {
+          console.log(
+            "Authentication state cleared from storage, logging out..",
+          );
+
+          setIsAuthenticated(false);
+          setUser(null);
+          setGmailData(null);
+        }
       }
     };
 

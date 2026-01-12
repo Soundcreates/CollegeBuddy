@@ -1,4 +1,6 @@
 import type { GmailMessage } from "../types/types";
+import { useState } from "react";
+import TodoPage from "./TodoPage";
 
 interface User {
     id: string;
@@ -16,7 +18,15 @@ interface DashboardProps {
 }
 
 function Dashboard({ user, onLogout, gmailData, scrapingLoading, onRefreshGmail }: DashboardProps) {
+
+    const [showTodoPage, setShowTodoPage] = useState<boolean>(false);
+
+    if (showTodoPage) {
+        return <TodoPage />;
+    }
+    
     return (
+        
         <div className="extension-popup brutalism-container">
             <div className="brutalism-card">
                 <h1 className="brutalism-title my-1">Welcome!</h1>
@@ -59,7 +69,7 @@ function Dashboard({ user, onLogout, gmailData, scrapingLoading, onRefreshGmail 
                             <p className="brutalism-text text-xs">No tasks for today!</p>
                         ) : (
                             gmailData?.map((email) => (
-                                <div key={email.id} className="todo-item">
+                                <div key={email.id} className="todo-item cursor-pointer" onClick={() => setShowTodoPage(true)}>
                                     <input type="checkbox" className="todo-checkbox w-3 h-3" />
                                     <span className="todo-text text-xs truncate">{email.subject}</span>
                                 </div>
