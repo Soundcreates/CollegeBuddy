@@ -58,8 +58,17 @@ func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, 
 	filteredMessages := []models.GmailMessage{} // Initialize as empty slice
 	for _, msg := range messages {
 		fmt.Printf("Trying to filter mail: %s \n", msg.ID)
+
+		flag bool = false
+		for _,mail := range service.Faculty_mail {
+			if strings.Contains(msg.From, mail){
+				flag = true
+				break
+			}
+		}
+
 		// Use Contains instead of HasSuffix because From header often comes as "Name <email@domain.com>"
-		if strings.Contains(msg.From, suffix[0]) || strings.Contains(msg.From, suffix[1]) {
+		if flag && flag == true { //i know that just saying flag checks if its true or false, but just for safety
 			fmt.Printf("Mail: %s, is going to be returned\n", msg.ID)
 			filteredMessages = append(filteredMessages, msg)
 		} else {
