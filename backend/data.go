@@ -1,4 +1,4 @@
-export const facuty_mails: string[] = [
+facuty_mails := {
   "ameyanaik@somaiya.edu",
   "amol.muley@somaiya.edu",
   "aynaiksatam@somaiya.edu",
@@ -108,4 +108,4 @@ export const facuty_mails: string[] = [
   "aratiphadke@somaiya.edu",
   "archana.gupta@somaiya.edu",
   "archana.sharma@somaiya.edu"
-]
+}
