@@ -11,7 +11,7 @@ headers = {
 }
 
 payload = {
-    "page_no": 1,
+    "page_no": 10,
     "sortBy": "name_ASC",
     "keywords": "",
     "campus_check": "",
@@ -23,7 +23,7 @@ payload = {
 }
 
 faculty_mails = []
-
+print(f"Scraping page no: {payload["page_no"]}")
 response = requests.post(url, headers=headers, data=payload)
 
 print("Status:", response.status_code)
@@ -36,10 +36,8 @@ for a in soup.select("a.svv-link[href^='mailto:']"):
 
 data_path = "../backend/data.ts"
 
-with open(data_path, "w",encoding="utf-8") as f:
-    f.write("export const facuty_mails: string[] = ")
+with open(data_path, "a",encoding="utf-8") as f:
     json.dump(faculty_mails, f, indent=2)
-    f.write(";\n")
 print("Data.ts written successfully")
 print(faculty_mails)
 
