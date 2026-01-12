@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 	"somaiya-ext/internal/models"
 	"strings"
@@ -20,7 +21,7 @@ func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.Gmai
 
 	log.Println("Filtering the email messages before storing")
 	var dummy []models.GmailMessage //send this for errors
-	mailsToStore, err := FilterMails(messages)
+	mailsToStore, err := FilterSomaiyaMails(messages)
 	if err != nil {
 		log.Println("Error filtering mails:", err.Error())
 		return err, false, dummy
@@ -50,38 +51,22 @@ func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.Gmai
 	return nil, true, mailsToStore
 }
 
-func FilterMails(messages []models.GmailMessage) ([]models.GmailMessage, error) {
+func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, error) {
+	log.Println("Reached filtering station")
+	suffix := []string{"@somaiya.edu", "@classroom.google.com"}
 
-	var filteredMessages []models.GmailMessage
+	filteredMessages := []models.GmailMessage{} // Initialize as empty slice
 	for _, msg := range messages {
-		//TODO: add filtering logic here
-		score := 0.0
-		signals := []string{}
-
-		suffixToCheck := "somaiya.edu"
-
-		if strings.HasSuffix(msg.From, suffixToCheck) {
-			score += 0.5
-			signals = append(signals, "edu_domain")
-		}
-
-		keywords := []string{"exam", "assignment", "lecture", "professor", "results", "syllabus", "semester", "university", "campus", "somaiya", "computer", "engineering"}
-		for _, k := range keywords {
-			if strings.Contains(strings.ToLower(msg.Subject), k) {
-				score += 0.2
-				signals = append(signals, "keyword_"+k)
-			}
-		}
-
-		IsUniversity := score >= 0.6
-		if IsUniversity {
-
+		fmt.Printf("Trying to filter mail: %s \n", msg.ID)
+		// Use Contains instead of HasSuffix because From header often comes as "Name <email@domain.com>"
+		if strings.Contains(msg.From, suffix[0]) || strings.Contains(msg.From, suffix[1]) {
+			fmt.Printf("Mail: %s, is going to be returned\n", msg.ID)
 			filteredMessages = append(filteredMessages, msg)
 		} else {
-			continue
+			fmt.Printf("Mail: %s, is being discarded \n", msg.ID)
 		}
-
 	}
 
 	return filteredMessages, nil
+
 }

@@ -214,6 +214,14 @@ async function scrapeGmail(token: string): Promise<GmailMessage[]> {
       },
     });
 
+    if (response.status === 401) {
+      console.log("Token invalid or expired. Clearing session.");
+      await new Promise<void>((resolve) =>
+        chrome.storage.local.clear(() => resolve()),
+      );
+      throw new Error("Session expired. Please login again.");
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -221,9 +229,11 @@ async function scrapeGmail(token: string): Promise<GmailMessage[]> {
     const data = await response.json();
     console.log("Gmail scraping successful:", data);
 
+    const messages = data.messages || [];
+
     // Store the scraped emails in chrome storage for  extension to access
     chrome.storage.local.set({
-      inboxTasks: data,
+      inboxTasks: messages,
       lastScrapeTime: new Date().toISOString(),
     });
 
@@ -232,13 +242,13 @@ async function scrapeGmail(token: string): Promise<GmailMessage[]> {
       type: "GMAIL_SCRAPE_SUCCESS",
       data: {
         success: true,
-        messages: data,
-        count: data.length || 0,
+        messages: messages,
+        count: messages.length,
       },
     });
     console.log(
-      "Checking the subject of the response to check if its of the correct data type: ",
-      data.subject,
+      "Checking the first message subject if available: ",
+      messages.length > 0 ? messages[0].subject : "No messages",
     );
     return data;
   } catch (error) {
