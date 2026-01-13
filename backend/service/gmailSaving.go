@@ -53,22 +53,27 @@ func StoreGmailMessages(db *gorm.DB, studentEmail string, messages []models.Gmai
 
 func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, error) {
 	log.Println("Reached filtering station")
-	suffix := []string{"@somaiya.edu", "@classroom.google.com"}
 
 	filteredMessages := []models.GmailMessage{} // Initialize as empty slice
 	for _, msg := range messages {
-		fmt.Printf("Trying to filter mail: %s \n", msg.ID)
+		fmt.Printf("Trying to filter mail that was sent from : %s \n",strings.ToLower(msg.From)) 
 
-		flag bool = false
-		for _,mail := range service.Faculty_mail {
-			if strings.Contains(msg.From, mail){
+		flag := false
+		lowerSender:=strings.ToLower(msg.From)
+		if len(Faculty_mails) == 0 {
+			fmt.Println("Faculty mails list is empty")
+		}
+
+		for _, mail := range Faculty_mails {
+			if strings.Contains(lowerSender, strings.ToLower(mail)) {
+				fmt.Println("Matched faculty mail: ", mail)
 				flag = true
 				break
-			}
+			}		
 		}
 
 		// Use Contains instead of HasSuffix because From header often comes as "Name <email@domain.com>"
-		if flag && flag == true { //i know that just saying flag checks if its true or false, but just for safety
+		if flag == true { //i know that just saying flag checks if its true or false, but just for safety
 			fmt.Printf("Mail: %s, is going to be returned\n", msg.ID)
 			filteredMessages = append(filteredMessages, msg)
 		} else {

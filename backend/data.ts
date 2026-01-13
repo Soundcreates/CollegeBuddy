@@ -1,0 +1,12 @@
+[
+  "ankita.n@somaiya.edu",
+  "ansa@somaiya.edu",
+  "anudeepakholapure@somaiya.edu",
+  "anushree@somaiya.edu",
+  "anushri.t@somaiya.edu",
+  "aparna.ghadge@somaiya.edu",
+  "aratiphadke@somaiya.edu",
+  "archana.gupta@somaiya.edu",
+  "archana.sharma@somaiya.edu",
+  "ashwinidalvi@somaiya.edu"
+]

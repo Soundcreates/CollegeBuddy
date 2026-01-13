@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-
+import lxml
 url = "https://www.somaiya.edu/arigel_general/faculty_ajax_new/1"
 print(url)
 headers = {
@@ -11,13 +11,13 @@ headers = {
 }
 
 payload = {
-    "page_no": 10,
+    "page_no": 20,
     "sortBy": "name_ASC",
     "keywords": "",
     "campus_check": "",
     "institute_check": "0,16",
     "sub_institute_check": "",
-    "dept_check": "",
+    "dept_check": "9",
     "desig_check": "",
     "lang": "en"
 }
@@ -34,7 +34,7 @@ for a in soup.select("a.svv-link[href^='mailto:']"):
     faculty_mails.append(a["href"].replace("mailto:", ""))
 
 
-data_path = "../backend/data.ts"
+data_path = "../backend/service/data.go"
 
 with open(data_path, "a",encoding="utf-8") as f:
     json.dump(faculty_mails, f, indent=2)
