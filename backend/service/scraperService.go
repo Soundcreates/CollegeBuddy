@@ -33,6 +33,7 @@ func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID
 		RedirectURL:  "http://localhost:8080/api/auth/google/callback",
 		Scopes: []string{
 			"https://www.googleapis.com/auth/gmail.readonly",
+			"https://www.googleapis.com/auth/gmail.modify",
 		},
 		Endpoint: google.Endpoint,
 	}

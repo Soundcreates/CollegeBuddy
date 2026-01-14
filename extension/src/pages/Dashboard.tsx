@@ -19,10 +19,10 @@ interface DashboardProps {
 
 function Dashboard({ user, onLogout, gmailData, scrapingLoading, onRefreshGmail }: DashboardProps) {
 
-    const [showTodoPage, setShowTodoPage] = useState<boolean>(false);
+    const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
 
-    if (showTodoPage) {
-        return <TodoPage />;
+    if (selectedMailId) {
+        return <TodoPage mailId={selectedMailId} onBack={() => setSelectedMailId(null)} />;
     }
     
     return (
@@ -69,7 +69,7 @@ function Dashboard({ user, onLogout, gmailData, scrapingLoading, onRefreshGmail 
                             <p className="brutalism-text text-xs">No tasks for today!</p>
                         ) : (
                             gmailData?.map((email) => (
-                                <div key={email.id} className="todo-item cursor-pointer" onClick={() => setShowTodoPage(true)}>
+                                <div key={email.id} className="todo-item cursor-pointer" onClick={() => setSelectedMailId(email.id)}>
                                     <input type="checkbox" className="todo-checkbox w-3 h-3" />
                                     <span className="todo-text text-xs truncate">{email.subject}</span>
                                 </div>

@@ -195,3 +195,136 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	log.Println("Encoding response to JSON")
 	json.NewEncoder(w).Encode(response)
 }
+
+// HandleGetGmailMessage fetches full details of a single Gmail message
+func (h *Handler) HandleGetGmailMessage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	log.Println("HandleGetGmailMessage called")
+
+	// Get message ID from query params
+	messageID := r.URL.Query().Get("id")
+	if messageID == "" {
+		log.Println("Message ID missing")
+		http.Error(w, "message ID required", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("Fetching message: %s", messageID)
+
+	// Extract JWT token from Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "missing authorization header", http.StatusUnauthorized)
+		return
+	}
+
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token == authHeader {
+		http.Error(w, "invalid authorization format", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse JWT to get email
+	claims, err := h.ParseJWTForScraping(token)
+	if err != nil {
+		http.Error(w, "invalid token: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	email, ok := claims["email"].(string)
+	if !ok {
+		http.Error(w, "email not found in token", http.StatusUnauthorized)
+		return
+	}
+
+	log.Println("JWT validated for email:", email)
+
+	// Get student profile
+	profile, err := h.Profile(w, token)
+	if err != nil {
+		http.Error(w, "failed to fetch profile: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	studentData, ok := profile["user"].(map[string]interface{})
+	if !ok {
+		http.Error(w, "invalid student data", http.StatusInternalServerError)
+		return
+	}
+
+	accessToken, ok := studentData["o_access_token"].(string)
+	if !ok || accessToken == "" {
+		http.Error(w, "no access token found", http.StatusUnauthorized)
+		return
+	}
+
+	refreshToken, ok := studentData["o_refresh_token"].(string)
+	if !ok {
+		refreshToken = ""
+	}
+
+	// Initialize Gmail service
+	gmailService := service.NewGmailService(h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET)
+
+	// Create Gmail client
+	gmailClient, err := gmailService.GmailClientFromStoredToken(r.Context(), h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET, accessToken, refreshToken, email, h.DB)
+	if err != nil {
+		log.Println("Failed to create Gmail client:", err)
+		http.Error(w, "failed to create gmail client: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch full message details
+	msg, err := gmailClient.Users.Messages.Get("me", messageID).Format("full").Do()
+	if err != nil {
+		log.Printf("Failed to fetch message %s: %v\n", messageID, err)
+		http.Error(w, "failed to fetch message: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Extract message details
+	msgData := models.GmailMessage{
+		ID:       msg.Id,
+		ThreadID: msg.ThreadId,
+		Snippet:  msg.Snippet,
+	}
+
+	// Extract headers
+	for _, h := range msg.Payload.Headers {
+		switch h.Name {
+		case "From":
+			msgData.From = h.Value
+		case "To":
+			msgData.To = h.Value
+		case "Subject":
+			msgData.Subject = h.Value
+		case "Date":
+			msgData.Date = h.Value
+		}
+	}
+
+	// Extract body
+	if msg.Payload.Body != nil && msg.Payload.Body.Data != "" {
+		// Decode base64 body
+		msgData.Body = msg.Payload.Body.Data
+	} else if len(msg.Payload.Parts) > 0 {
+		// Check parts for body
+		for _, part := range msg.Payload.Parts {
+			if part.MimeType == "text/plain" || part.MimeType == "text/html" {
+				if part.Body != nil && part.Body.Data != "" {
+					msgData.Body = part.Body.Data
+					break
+				}
+			}
+		}
+	}
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": msgData,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}

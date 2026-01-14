@@ -76,4 +76,19 @@ server.interceptors.response.use(
     }
 );
 
+// Fetch single Gmail message with full details
+export async function getGmailMessage(messageId: string, token: string): Promise<any> {
+    try {
+        const response = await server.get(`/api/scrape/gmail/message?id=${messageId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch Gmail message:", error);
+        throw error;
+    }
+}
+
 export default server;

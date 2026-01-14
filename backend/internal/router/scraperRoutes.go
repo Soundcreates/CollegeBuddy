@@ -8,4 +8,5 @@ import (
 
 func registerScraperRoutes(h *handler.Handler, router *http.ServeMux) {
 	router.HandleFunc("POST /scrape/gmail", middleware.WithAuth(h)(h.HandleScrapeGmail))
+	router.HandleFunc("GET /scrape/gmail/message", middleware.WithAuth(h)(h.HandleGetGmailMessage))
 }

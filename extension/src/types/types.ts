@@ -7,4 +7,5 @@ export interface GmailMessage {
     date: string;
     student: string;
     snippet?: string;
+    body?: string;
 }
