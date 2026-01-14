@@ -9,35 +9,35 @@ headers = {
     "X-Requested-With": "XMLHttpRequest",
     "Content-Type": "application/x-www-form-urlencoded"
 }
+for i in range(52,100):
+    payload = {
+        "page_no": i,
+        "sortBy": "name_ASC",
+        "keywords": "",
+        "campus_check": "",
+        "institute_check": "0,16",
+        "sub_institute_check": "",
+        "dept_check": "9",
+        "desig_check": "",
+        "lang": "en"
+    }
 
-payload = {
-    "page_no": 20,
-    "sortBy": "name_ASC",
-    "keywords": "",
-    "campus_check": "",
-    "institute_check": "0,16",
-    "sub_institute_check": "",
-    "dept_check": "9",
-    "desig_check": "",
-    "lang": "en"
-}
+    faculty_mails = []
+    print(f"Scraping page no: {payload['page_no']}")
+    response = requests.post(url, headers=headers, data=payload)
 
-faculty_mails = []
-print(f"Scraping page no: {payload["page_no"]}")
-response = requests.post(url, headers=headers, data=payload)
+    print("Status:", response.status_code)
 
-print("Status:", response.status_code)
-
-soup = BeautifulSoup(response.text, "lxml")
-# CSS selector is safest
-for a in soup.select("a.svv-link[href^='mailto:']"):
-    faculty_mails.append(a["href"].replace("mailto:", ""))
+    soup = BeautifulSoup(response.text, "lxml")
+    # CSS selector is safest
+    for a in soup.select("a.svv-link[href^='mailto:']"):
+        faculty_mails.append(a["href"].replace("mailto:", ""))
 
 
-data_path = "../backend/service/data.go"
+    data_path = "../backend/service/data.go"
 
-with open(data_path, "a",encoding="utf-8") as f:
-    json.dump(faculty_mails, f, indent=2)
-print("Data.ts written successfully")
-print(faculty_mails)
+    with open(data_path, "a",encoding="utf-8") as f:
+        json.dump(faculty_mails, f, indent=2)
+    print("Data.ts written successfully")
+    print(faculty_mails)
 

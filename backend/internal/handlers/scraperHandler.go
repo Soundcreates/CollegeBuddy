@@ -119,7 +119,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch emails from Gmail
-	limit := 30
+	limit := 100
 	log.Println("Fetching emails from Gmail")
 	messages, err := gmailClient.Users.Messages.List("me").MaxResults(int64(limit)).Do()
 	log.Printf("Fetching for %d mails", limit)
