@@ -19,7 +19,7 @@ func main() {
 	//then we connect to db
 	db, err := config.ConnectDB(cfg)
 	if err != nil {
-		fmt.Printf("%s", err)
+		log.Fatal(err)
 	}
 	db.AutoMigrate(&models.Student{}, &models.GmailMessage{})
 	log.Println("Database migrated successfully")
