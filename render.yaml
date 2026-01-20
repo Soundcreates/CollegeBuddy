@@ -5,7 +5,7 @@ services:
     plan: free
     region: singapore
     dockerContext: backend
-    dockerfilePath: backend/Dockerfile
+    dockerfilePath: backend/Dockerfile.prod
     envVars:
       - key: PORT
         value: 8080
