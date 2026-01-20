@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/rs/cors"
 	"log"
 	"net/http"
+	"os"
 	config "somaiya-ext/configs"
 	handler "somaiya-ext/internal/handlers"
 	"somaiya-ext/internal/models"
 	routes "somaiya-ext/internal/router"
+
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -26,12 +28,17 @@ func main() {
 	//this is the main Router
 	mux := routes.RegisterRoutes(handler)
 
+	allowedOrigins := []string{
+		"http://localhost:5173",                               // Vite dev server
+		"chrome-extension://jkbjennlilioelogocancfjnplomepcl", // Your Chrome extension
+	}
+	if os.Getenv("ALLOWED_ORIGIN") != "" {
+		allowedOrigins = append(allowedOrigins, os.Getenv("ALLOWED_ORIGIN"))
+	}
+
 	// Configure CORS to allow requests from your frontend
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{
-			"http://localhost:5173",                               // Vite dev server
-			"chrome-extension://jkbjennlilioelogocancfjnplomepcl", // Your Chrome extension
-		},
+		AllowedOrigins: allowedOrigins,
 		AllowedMethods: []string{
 			"GET", "POST", "PUT", "DELETE", "OPTIONS",
 		},
@@ -47,6 +54,7 @@ func main() {
 
 	handler2 := c.Handler(mux)
 
-	fmt.Println("Server starting on :8080")
-	http.ListenAndServe(":8080", handler2)
+	port := fmt.Sprintf(":%d", cfg.PORT)
+	fmt.Println("Server starting on " + port)
+	http.ListenAndServe(port, handler2)
 }

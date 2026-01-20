@@ -26,7 +26,7 @@ func LoadConfig() *Config {
 	log.Println("Loading config vars....")
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading env vars")
+		log.Println("No .env file found, using system environment variables")
 	}
 
 	portStr := os.Getenv("PORT")
