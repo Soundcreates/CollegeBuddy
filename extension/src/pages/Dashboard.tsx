@@ -61,12 +61,12 @@ function Dashboard({ user, onLogout, gmailData, scrapingLoading, onRefreshGmail 
 
                 {/* Todo List Box */}
                 <div className="todo-box flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <h2 className="todo-title text-xs mb-2">TODAY'S TASKS</h2>
+                    <h2 className="todo-title text-xs mb-2">This Week's tasks</h2>
                     <div className="todo-list overflow-y-auto hide-scrollbar flex-1 max-h-[200px]">
                         {scrapingLoading ? (
                             <p className="brutalism-text text-xs">Loading tasks...</p>
                         ) : gmailData?.length === 0 ? (
-                            <p className="brutalism-text text-xs">No tasks for today!</p>
+                            <p className="brutalism-text text-xs">No tasks for this week!</p>
                         ) : (
                             gmailData?.map((email) => (
                                 <div key={email.id} className="todo-item cursor-pointer" onClick={() => setSelectedMailId(email.id)}>

@@ -7,7 +7,10 @@ import (
 	"somaiya-ext/internal/models"
 	"somaiya-ext/service"
 	"strings"
+	"fmt"
+	"time"
 )
+
 
 type ParsedMessage struct {
 	ID       string `json:"id"`
@@ -119,52 +122,73 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch emails from Gmail
-	limit := 100
-	log.Println("Fetching emails from Gmail")
-	messages, err := gmailClient.Users.Messages.List("me").MaxResults(int64(limit)).Do()
-	log.Printf("Fetching for %d mails", limit)
-
-	if err != nil {
-		log.Println("Failed to fetch emails:", err)
-		http.Error(w, "failed to fetch emails: "+err.Error(), http.StatusInternalServerError)
-		return
+	now := time.Now()
+	weekday := int(now.Weekday())
+	if weekday == 0 { //if its a sunday
+		weekday = 7
 	}
+	monday := now.AddDate(0,0,-weekday+1)
+	monday = time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, monday.Location())
+	sunday := monday.AddDate(0,0,6)
+	sunday = time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 23, 59, 59, 0, sunday.Location())
+
+	after := monday.Unix()
+	before := sunday.Unix()
+
+	query := fmt.Sprintf("after:%d before:%d", after,before)
+	pageToken := ""
 	var parsedMessages []models.GmailMessage
-
-	for i := range messages.Messages {
-		log.Printf("Fetching  metadata of message ID: %s\n", messages.Messages[i].Id)
-		msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders("From", "To", "Subject", "Date").Do()
+	for {
+		log.Println("Fetching emails from Gmail")
+		call := gmailClient.Users.Messages.List("me").Q(query)
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
+		}
+		messages, err := call.Do()
 		if err != nil {
-			log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
-			continue
+			log.Println("Failed to fetch emails:", err)
+			http.Error(w, "failed to fetch emails: "+err.Error(), http.StatusInternalServerError)
+			return
 		}
-
-		svvEmail := ""
-		if email, ok := studentData["email"].(string); ok && email != "" {
-			svvEmail = email
-		}
-
-		msgData := models.GmailMessage{
-			ID:       msg.Id,
-			ThreadID: msg.ThreadId,
-			Student:  svvEmail,
-		}
-
-		// Extract headers from the actual message payload
-		for _, h := range msg.Payload.Headers {
-			switch h.Name {
-			case "From":
-				msgData.From = h.Value
-			case "To":
-				msgData.To = h.Value
-			case "Subject":
-				msgData.Subject = h.Value
-			case "Date":
-				msgData.Date = h.Value
+		for i := range messages.Messages {
+			log.Printf("Fetching  metadata of message ID: %s\n", messages.Messages[i].Id)
+			msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders("From", "To", "Subject", "Date").Do()
+			if err != nil {
+				log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
+				continue
 			}
-		}
 
-		parsedMessages = append(parsedMessages, msgData)
+			svvEmail := ""
+			if email, ok := studentData["email"].(string); ok && email != "" {
+				svvEmail = email
+			}
+
+			msgData := models.GmailMessage{
+				ID:       msg.Id,
+				ThreadID: msg.ThreadId,
+				Student:  svvEmail,
+			}
+
+			// Extract headers from the actual message payload
+			for _, h := range msg.Payload.Headers {
+				switch h.Name {
+				case "From":
+					msgData.From = h.Value
+				case "To":
+					msgData.To = h.Value
+				case "Subject":
+					msgData.Subject = h.Value
+				case "Date":
+					msgData.Date = h.Value
+				}
+			}
+
+			parsedMessages = append(parsedMessages, msgData)
+		}
+		if messages.NextPageToken == "" {
+			break
+		}
+		pageToken = messages.NextPageToken
 	}
 
 	// Log sample of parsed messages
@@ -187,7 +211,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"success":  true,
 		"messages": filteredMails,
-		"count":    len(messages.Messages),
+		"count":    len(parsedMessages),
 	}
 	log.Println("Writing header")
 	w.WriteHeader(http.StatusOK)
