@@ -8,9 +8,9 @@ This guide will help you set up and use the CollegeBuddy Extension locally, as t
 - Docker and Docker Compose installed
 - Git (optional, for cloning)
 
-## 1. Clone the Repository
+## 1. Fork the Repository
 ```
-git clone <your-repo-url>
+git clone <repo-url>
 cd Somaiya_ext
 ```
 
