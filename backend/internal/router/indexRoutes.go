@@ -11,6 +11,10 @@ func RegisterRoutes(h *handler.Handler) *http.ServeMux {
 
 	apiRouter := http.NewServeMux()
 
+	mainRouter.HandleFunc("/health", func(w http.ResponseWriter, r* http.Request) {
+		w.Write([]byte("OK"))
+	})
+	
 	mainRouter.Handle("/api/", http.StripPrefix("/api", apiRouter))
 
 	registerAuthRoutes(h, apiRouter)
