@@ -7,8 +7,7 @@ This guide will help you set up and use the CollegeBuddy Extension locally, as t
 ## Prerequisites
 - Google Chrome browser
 - Node.js and npm installed
-- Docker and Docker Compose installed
-- Git (optional, for cloning)
+- Git 
 
 ## 1. Fork the Repository
 ```
