@@ -1,3 +1,5 @@
+[![wakatime](https://wakatime.com/badge/user/8e9eed09-5e3e-487a-80d6-aa372159ea08/project/895e0750-f0d9-48f5-b38c-c17e31659278.svg)](https://wakatime.com/badge/user/8e9eed09-5e3e-487a-80d6-aa372159ea08/project/895e0750-f0d9-48f5-b38c-c17e31659278)
+
 # CollegeBuddy Extension Setup Guide
 
 This guide will help you set up and use the CollegeBuddy Extension locally, as the extension is not hosted.
