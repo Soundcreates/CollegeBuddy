@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -43,7 +44,7 @@ func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, 
 
 }
 
-func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error){
+func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
 	log.Println("Reached text filtering station")
 	url := "http://localhost:8000/text-classification"
 
