@@ -46,7 +46,7 @@ func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, 
 
 func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
 	log.Println("Reached text filtering station")
-	url := "http://localhost:8000/text-classification"
+	url := "https://collegebuddy-python.onrender.com"
 
 	// Collect email bodies (or snippets) into a slice
 	var texts []string
