@@ -27,10 +27,10 @@ func main() {
 
 	//this is the main Router
 	mux := routes.RegisterRoutes(handler)
-
+	extension_id := cfg.EXTENSION_ID
 	allowedOrigins := []string{
 		"http://localhost:5173",                               // Vite dev server
-		"chrome-extension://jkbjennlilioelogocancfjnplomepcl", // Your Chrome extension
+		"chrome-extension://" + extension_id, // Your Chrome extension
 	}
 	if os.Getenv("ALLOWED_ORIGIN") != "" {
 		allowedOrigins = append(allowedOrigins, os.Getenv("ALLOWED_ORIGIN"))
