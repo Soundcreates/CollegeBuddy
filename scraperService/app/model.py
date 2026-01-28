@@ -1,4 +1,5 @@
 from transformers import pipeline
+from huggingface_hub import login
 
 class ZeroShotEmailClassifier:
     def __init__(self):
