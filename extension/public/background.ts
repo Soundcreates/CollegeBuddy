@@ -162,7 +162,7 @@ async function handleOAuth(sendResponse: (response: OAuthResponse) => void) {
   try {
     console.log("Starting OAuth flow....");
 
-    const response = await fetch("http://localhost:8080/api/auth/OAuth", {
+    const response = await fetch("https://collegebuddy-service.onrender.com/api/auth/OAuth", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -206,7 +206,7 @@ async function scrapeGmail(token: string): Promise<GmailMessage[]> {
   try {
     console.log("Starting gmail scraping...");
 
-    const response = await fetch("http://localhost:8080/api/scrape/gmail", {
+    const response = await fetch("https://collegebuddy-service.onrender.com/api/scrape/gmail", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
