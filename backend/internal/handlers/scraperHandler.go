@@ -206,16 +206,12 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error happened while filtering mails")
 	}
 	log.Println("Mails filtered successfully")
-	classifiedMails, err := service.TextFilter(filteredMails)
-	if err != nil {
-		log.Println("Error happened while text filtering mails")
-	}
-	log.Println("Mails classified successfully")
+	
 	//returning response
 	response := map[string]interface{}{
 		"success":  true,
-		"messages": classifiedMails,
-		"count":    len(classifiedMails),
+		"messages": filteredMails,
+		"count":    len(filteredMails),
 	}
 	log.Println("Writing header")
 	w.WriteHeader(http.StatusOK)
