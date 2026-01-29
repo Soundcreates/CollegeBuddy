@@ -24,10 +24,11 @@ type userGmailKey string
 const user_gmail userGmailKey = "user_gmail"
 
 func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
+	redirect_url := fmt.Sprintf(h.Config.BACKEND_URL + "/api/auth/google/callback")
 	return &oauth2.Config{
 		ClientID:     h.Config.OAUTH_CLIENT_ID,
 		ClientSecret: h.Config.OAUTH_CLIENT_SECRET,
-		RedirectURL:  "http://localhost:8080/api/auth/google/callback",
+		RedirectURL:  redirect_url,
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",

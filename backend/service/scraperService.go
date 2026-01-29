@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
+	config "somaiya-ext/configs"
 	"somaiya-ext/internal/models"
 	"time"
 
@@ -22,15 +24,24 @@ type GmailService struct {
 }
 
 func NewGmailService(clientID, clientSecret string) *GmailService {
-	return &GmailService{}
+	return &GmailService{
+		Config: struct {
+			OAuthClientID     string
+			OAuthClientSecret string
+		}{
+			OAuthClientID:     clientID,
+			OAuthClientSecret: clientSecret,
+		},
+	}
 }
 
 func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID, clientSecret, accessToken, refreshToken string, email string, db *gorm.DB) (*gmail.Service, error) {
-
+	backend_url_prod := config.Config.BACKEND_URL
+	redirect_url := fmt.Sprintf(backend_url_prod + "/api/auth/google/callback")
 	config := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		RedirectURL:  "http://localhost:8080/api/auth/google/callback",
+		RedirectURL:  redirect_url,
 		Scopes: []string{
 			"https://www.googleapis.com/auth/gmail.readonly",
 			"https://www.googleapis.com/auth/gmail.modify",

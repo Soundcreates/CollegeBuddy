@@ -21,6 +21,7 @@ type Config struct {
 	JWT_SECRET          string
 	EXTENSION_ID        string
 	DATABASE_URL        string
+	BACKEND_URL 	  string
 }
 
 func LoadConfig() *Config {
@@ -58,6 +59,7 @@ func LoadConfig() *Config {
 		JWT_SECRET:          os.Getenv("JWT_SECRET"),
 		EXTENSION_ID:        os.Getenv("EXTENSION_ID"),
 		DATABASE_URL:        os.Getenv("DATABASE_URL"),
+		BACKEND_URL:   os.Getenv("BACKEND_URL"),
 	}
 
 	return cfg
