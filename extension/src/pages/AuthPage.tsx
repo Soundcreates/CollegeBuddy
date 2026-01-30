@@ -35,6 +35,7 @@ function AuthPage() {
   const [authLoading, setAuthLoading] = useState(false);
   const [gmailData, setGmailData] = useState<GmailMessage[] | null>([]);
   const [scrapingLoading, setScrapingLoading] = useState(false);
+  const [showDashboard, setShowDashboard] = useState<boolean>(false);
 
   const handleGmailScrape = async () => {
     try {
@@ -70,12 +71,21 @@ function AuthPage() {
     chrome.storage.local.get(
       ["isAuthenticated", "user", "token", "refreshToken", "inboxTasks"],
       (result) => {
+        console.log("AuthPage: Checked storage for auth:", result);
         if (result.isAuthenticated && result.user && result.token) {
+          console.log("AuthPage: User is authenticated from storage");
           setIsAuthenticated(true);
           setUser(result.user as User);
+          setShowDashboard(true);
           // Start Gmail scraping only after confirming authentication
           const tasks = result.inboxTasks;
           setGmailData(Array.isArray(tasks) ? tasks : null);
+        } else {
+          console.log("AuthPage: User is NOT authenticated. Missing keys:", {
+            isAuthenticated: result.isAuthenticated,
+            user: !!result.user,
+            token: !!result.token,
+          });
         }
         setLoading(false);
       },
@@ -88,6 +98,7 @@ function AuthPage() {
         setIsAuthenticated(true);
         setUser(oauthMessage.user as User);
         setAuthLoading(false);
+        setShowDashboard(true);
         // Start Gmail scraping after successful OAuth
         handleGmailScrape();
       }
@@ -111,7 +122,6 @@ function AuthPage() {
 
     chrome.runtime.onMessage.addListener(messageListener);
 
-
     // Listen for storage changes (e.g., from cron job updates)
     const storageListener = (
       changes: { [key: string]: chrome.storage.StorageChange },
@@ -127,6 +137,21 @@ function AuthPage() {
           setGmailData(Array.isArray(newTasks) ? newTasks : null);
         }
 
+        // Handle authentication state changes
+        if (changes.isAuthenticated || changes.user || changes.token) {
+          chrome.storage.local.get(
+            ["isAuthenticated", "user", "token"],
+            (result) => {
+              if (result.isAuthenticated && result.user && result.token) {
+                console.log("AuthPage: Authentication detected via storage change");
+                setIsAuthenticated(true);
+                setUser(result.user as User);
+                setShowDashboard(true);
+              }
+            },
+          );
+        }
+
         if (
           (changes.isAuthenticated && !changes.isAuthenticated.newValue) ||
           (changes.token && !changes.token.newValue)
@@ -138,6 +163,7 @@ function AuthPage() {
           setIsAuthenticated(false);
           setUser(null);
           setGmailData(null);
+          setShowDashboard(false);
         }
       }
     };
@@ -195,7 +221,8 @@ function AuthPage() {
     );
   }
 
-  if (isAuthenticated && user) {
+  if (showDashboard && isAuthenticated && user) {
+    
     return (
       <Dashboard
         user={user}

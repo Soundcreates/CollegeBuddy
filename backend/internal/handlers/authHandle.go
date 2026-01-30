@@ -151,37 +151,6 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	h.generateCallbackHTML(w, existingUser, accessToken, refreshToken)
 
 	// Handle error case
-	errorHTML := fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>OAuth Error</title>
-</head>
-<body>
-    <div id="status">Authentication failed. Please try again.</div>
-    <script>
-        // Send error message to extension
-        if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-            const extensionId = '%s';
-            chrome.runtime.sendMessage(extensionId, {
-                type: 'OAUTH_ERROR',
-                error: 'Authentication failed'
-            }, function(response) {
-                console.log('Error message sent to extension');
-                window.close();
-            });
-        }
-
-        setTimeout(function() {
-            window.close();
-        }, 3000);
-    </script>
-</body>
-</html>`, h.Config.EXTENSION_ID)
-
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(errorHTML))
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, string, bool, error) {

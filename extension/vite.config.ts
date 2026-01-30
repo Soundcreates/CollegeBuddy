@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
-import tailwindcss from "@tailwindcss/vite"
+import tailwindcss from "@tailwindcss/vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -10,6 +10,7 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, "index.html"),
         background: resolve(__dirname, "public/background.ts"),
+        callback: resolve(__dirname, "src/callback/callback.html"),
       },
       output: {
         entryFileNames: (chunkInfo) => {
@@ -21,9 +22,8 @@ export default defineConfig({
         assetFileNames: "[name].[ext]",
       },
     },
-    
-    outDir: "dist",
 
+    outDir: "dist",
   },
   publicDir: "public",
 });

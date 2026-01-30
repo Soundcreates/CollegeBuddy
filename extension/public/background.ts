@@ -40,7 +40,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onMessage.addListener(
-  (message: OAuthMessage, sender, sendResponse) => {
+  async (message: OAuthMessage, sender, sendResponse) => {
     console.log("Message received in background:", message);
 
     if (message.type === "START_OAUTH") {
@@ -54,29 +54,37 @@ chrome.runtime.onMessage.addListener(
         message,
       );
 
-      chrome.storage.local.set(
-        {
-          user: message.user,
-          token: message.token,
-          refreshToken: message.refreshToken,
-          isAuthenticated: true,
-        },
-        () => {
-          chrome.runtime.sendMessage({
-            type: "USER_OAUTH_SUCCESSFUL",
-            user: message.user,
-            token: message.token,
-            refreshToken: message.refreshToken,
-          });
-          sendResponse({ success: true });
-        },
+      await chrome.storage.local.set({
+        user: message.user,
+        token: message.token,
+        refreshToken: message.refreshToken,
+        isAuthenticated: true,
+      });
+      if (chrome.runtime.lastError) {
+        console.error("Error saving to storage:", chrome.runtime.lastError);
+        sendResponse({
+          success: false,
+          error: chrome.runtime.lastError.message,
+        });
+        return;
+      }
+      console.log(
+        "OAuth data stored in localstorage successfully. Keys set: user, token, refreshToken, isAuthenticated",
       );
+      // Separated logic after set
+      chrome.runtime.sendMessage({
+        type: "USER_OAUTH_SUCCESSFUL",
+        user: message.user,
+        token: message.token,
+        refreshToken: message.refreshToken,
+      });
+      sendResponse({ success: true });
       return true;
     }
 
     if (message.type === "START_GMAIL_SCRAPE") {
       // Get token from storage and start scraping
-      chrome.storage.local.get(["token"], (result) => {
+      chrome.storage.local.get(["token"]).then((result) => {
         if (result.token && typeof result.token === "string") {
           scrapeGmail(result.token as string)
             .then((data) => {
@@ -104,7 +112,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
   console.log("Daily Gmail scrape alarm triggered:", alarm);
   //extracting token from the storage
-  chrome.storage.local.get(["token"], async (result) => {
+  chrome.storage.local.get(["token"]).then(async (result) => {
     if (!result.token || typeof result.token !== "string") {
       console.error("No OAuth token found. Cannot perform daily Gmail scrape.");
       return;
@@ -114,9 +122,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     try {
       const response = await scrapeGmail(result.token as string);
       console.log("Daily Gmail scrape completed successfully:", response);
-      chrome.storage.local.set({
+      await chrome.storage.local.set({
         inboxTasks: response,
       });
+      // Separated logic after set (if any needed)
     } catch (e: any) {
       console.error("Error during daily Gmail scrape:", e.message);
       return;
@@ -126,7 +135,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 // Listen for messages from external pages (the callback page)
 chrome.runtime.onMessageExternal.addListener(
-  (message: OAuthMessage, sender, sendResponse) => {
+  async (message: OAuthMessage, sender, sendResponse) => {
     console.log("External message received:", message, "from:", sender);
 
     if (
@@ -136,23 +145,22 @@ chrome.runtime.onMessageExternal.addListener(
     ) {
       console.log("OAuth success from callback page:", message);
 
-      chrome.storage.local.set(
-        {
-          user: message.user,
-          token: message.token,
-          refreshToken: message.refreshToken,
-          isAuthenticated: true,
-        },
-        () => {
-          chrome.runtime.sendMessage({
-            type: "USER_OAUTH_SUCCESSFUL",
-            user: message.user,
-            token: message.token,
-            refreshToken: message.refreshToken,
-          });
-          sendResponse({ success: true });
-        },
-      );
+      await chrome.storage.local.set({
+        user: message.user,
+        token: message.token,
+        refreshToken: message.refreshToken,
+        isAuthenticated: true,
+      });
+      // Separated logic after set
+      chrome.runtime.sendMessage({
+        type: "USER_OAUTH_SUCCESSFUL",
+        user: message.user,
+        token: message.token,
+        refreshToken: message.refreshToken,
+      });
+      console.log("OAuth data stored in localstorage successfully");
+      sendResponse({ success: true });
+
       return true;
     }
   },
@@ -162,12 +170,15 @@ async function handleOAuth(sendResponse: (response: OAuthResponse) => void) {
   try {
     console.log("Starting OAuth flow....");
 
-    const response = await fetch("https://collegebuddy-service.onrender.com/api/auth/OAuth", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://collegebuddy-service.onrender.com/api/auth/OAuth",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -206,13 +217,16 @@ async function scrapeGmail(token: string): Promise<GmailMessage[]> {
   try {
     console.log("Starting gmail scraping...");
 
-    const response = await fetch("https://collegebuddy-service.onrender.com/api/scrape/gmail", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      "https://collegebuddy-service.onrender.com/api/scrape/gmail",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     if (response.status === 401) {
       console.log("Token invalid or expired. Clearing session.");
@@ -232,7 +246,7 @@ async function scrapeGmail(token: string): Promise<GmailMessage[]> {
     const messages = data.messages || [];
 
     // Store the scraped emails in chrome storage for  extension to access
-    chrome.storage.local.set({
+    await chrome.storage.local.set({
       inboxTasks: messages,
       lastScrapeTime: new Date().toISOString(),
     });
