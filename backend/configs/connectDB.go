@@ -9,14 +9,14 @@ import (
 )
 
 func ConnectDB(cfg *Config) (*gorm.DB, error) {
-	fmt.Printf("Connecting to db with: Host: %s, port = %s, user = %s, password=%s dbname= %s\n",
-		cfg.DB_HOST, cfg.DB_PORT, cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_NAME)
-		
+	
 	var dsn string
 	if cfg.DATABASE_URL != "" {
 		fmt.Println("Using DATABASE_URL for connection")
 		dsn = cfg.DATABASE_URL
 	} else {
+		fmt.Printf("Connecting to db with: Host: %s, port = %s, user = %s, password=%s dbname= %s\n",
+		cfg.DB_HOST, cfg.DB_PORT, cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_NAME)
 		fmt.Println("Using individual DB parameters for connection")
 		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Kolkata",
 			cfg.DB_HOST, cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_NAME, cfg.DB_PORT)

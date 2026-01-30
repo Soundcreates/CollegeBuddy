@@ -3,7 +3,6 @@ package config
 import (
 	"log"
 	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -12,7 +11,7 @@ type Config struct {
 	DB_URI              string
 	DB_HOST             string
 	DB_PORT             string
-	PORT                int
+	PORT                string
 	DB_PASSWORD         string
 	DB_NAME             string
 	DB_USER             string
@@ -31,13 +30,7 @@ func LoadConfig() *Config {
 		log.Println("No .env file found, using system environment variables")
 	}
 
-	portStr := os.Getenv("PORT")
-	port := 8080 //default port no
-	if portStr != "" {
-		if p, err := strconv.Atoi(portStr); err == nil {
-			port = p
-		}
-	}
+
 
 	// dbPort := 5432
 	// if db_port != "" {
@@ -50,7 +43,7 @@ func LoadConfig() *Config {
 		DB_URI:              os.Getenv("DB_URI"),
 		DB_HOST:             os.Getenv("DB_HOST"),
 		DB_NAME:             os.Getenv("DB_NAME"),
-		PORT:                port,
+		PORT:                os.Getenv("PORT"),
 		DB_PASSWORD:         os.Getenv("DB_PASSWORD"),
 		DB_PORT:             os.Getenv("DB_PORT"),
 		DB_USER:             os.Getenv("DB_USER"),

@@ -53,8 +53,12 @@ func main() {
 	})
 
 	handler2 := c.Handler(mux)
-
-	port := fmt.Sprintf(":%d", cfg.PORT)
+	var port string
+	if cfg.PORT != "" {
+		port = ":" + cfg.PORT
+	} else {
+		port = ":8080" // default port if not specified
+	}
 	fmt.Println("Server starting on " + port)
 	http.ListenAndServe(port, handler2)
 }
