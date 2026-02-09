@@ -31,7 +31,7 @@ class Authapi extends ChangeNotifier{
     });
   }
 
-  final String baseUrl = "http://localhost:8080/api";
+  final String baseUrl = "http://172.23.164.16:8080/api";
   Future<void> startGoogleOauth() async {
     final url = Uri.parse("$baseUrl/auth/OAuth");
     try {
@@ -45,7 +45,7 @@ class Authapi extends ChangeNotifier{
     }
   }
 
-  Future<UserModel?> get currentUser async {
+  Future<UserModel?> get currentUser async { 
     final storage = FlutterSecureStorage();
     final userEmail = await storage.read(key: "user_email");
     if(userEmail == null) return null;
