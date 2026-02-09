@@ -297,19 +297,16 @@ func (h *Handler) Profile(w http.ResponseWriter, token string) (map[string]inter
 
 	return response, nil
 }
-type ProfileRequest struct {
-	Email string `json:"email"`
-}
+
 func (h *Handler)ProfileFromMail(w http.ResponseWriter, r *http.Request){
-	var req ProfileRequest
-	mail , err:= r.URL.Query().Get("email")
-	if err != nil {
-		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
+	mail  := r.URL.Query().Get("email")
+	if mail == "" {
+		http.Error(w, "Email is required", http.StatusBadRequest)
 		return
 	}
 
 	var student models.Student
-	user , err := h.DB.Where("svv_email = ?", req.Email).First(&student).Error
+	 err := h.DB.Where("svv_email = ?", mail).First(&student).Error//its not returning an user because its storing the contents in the student var
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "Student not found", http.StatusNotFound)
@@ -329,7 +326,7 @@ func (h *Handler)ProfileFromMail(w http.ResponseWriter, r *http.Request){
 			"email":           student.SVVEmail,
 			"picture":         student.ProfilePic,
 			"verified_email":  student.VerifiedEmail,
-		} 
+		} ,
 	}
 	json.NewEncoder(w).Encode(response)
 }
