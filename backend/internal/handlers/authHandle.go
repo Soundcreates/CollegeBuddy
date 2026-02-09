@@ -297,6 +297,42 @@ func (h *Handler) Profile(w http.ResponseWriter, token string) (map[string]inter
 
 	return response, nil
 }
+type ProfileRequest struct {
+	Email string `json:"email"`
+}
+func (h *Handler)ProfileFromMail(w http.ResponseWriter, r *http.Request){
+	var req ProfileRequest
+	mail , err:= r.URL.Query().Get("email")
+	if err != nil {
+		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var student models.Student
+	user , err := h.DB.Where("svv_email = ?", req.Email).First(&student).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "Student not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+		
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Profile fetched successfully",
+		"user": map[string]interface{}{
+			"id":              student.ID,
+			"name":            student.Name,
+			"svv_net_id":      student.SVVNetId,
+			"email":           student.SVVEmail,
+			"picture":         student.ProfilePic,
+			"verified_email":  student.VerifiedEmail,
+		} 
+	}
+	json.NewEncoder(w).Encode(response)
+}
 
 // Helper function to parse JWT token using handler's config (for scraper handler)
 func (h *Handler) ParseJWTForScraping(tokenString string) (map[string]interface{}, error) {
@@ -359,6 +395,8 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 //helper function to generate call back html for mobile
 func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {
 	w.Header().Set("Content-Type", "text/html")
+	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken),url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
+	w.Write([]byte(redirectURL))
 }
 // Helper function to generate callback HTML for OAuth success
 func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {

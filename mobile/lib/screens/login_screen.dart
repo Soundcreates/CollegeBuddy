@@ -2,22 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/auth_service.dart';
+import 'package:mobile/api/authApi.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  bool isLoading = false;
+  
+  void finishLoading() {
+
+    setState(() {
+      isLoading =!isLoading;
+    });
+  }
+  @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-
+    final authApi = Provider.of<Authapi>(context);
     // Watch for auth changes to navigate
-    if (authService.isAuthenticated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      });
-    }
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -74,7 +80,14 @@ class LoginScreen extends StatelessWidget {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: authService.signIn,
+                        onPressed: () async {
+                            finishLoading();
+                            await authApi.startGoogleOauth();
+                            finishLoading();
+                          Navigator.pushReplacementNamed(context, "/dashboard");
+                       
+
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.black,
@@ -83,7 +96,7 @@ class LoginScreen extends StatelessWidget {
                           ),
                           elevation: 0,
                         ),
-                        child: authService.isLoading
+                        child: isLoading
                             ? const CircularProgressIndicator(
                                 color: Colors.black,
                               )

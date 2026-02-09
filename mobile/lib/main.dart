@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/api/authApi.dart';
 import 'package:provider/provider.dart';
-import 'services/auth_service.dart';
 import 'screens/loading_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 
 void main() {
-  runApp(const CollegeBuddyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => Authapi(),
+      child: const CollegeBuddyApp(),
+    )
+  );
 }
 
 class CollegeBuddyApp extends StatelessWidget {
@@ -14,9 +19,7 @@ class CollegeBuddyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AuthService())],
-      child: MaterialApp(
+      return MaterialApp(
         title: 'CollegeBuddy',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -35,7 +38,6 @@ class CollegeBuddyApp extends StatelessWidget {
           '/login': (context) => const LoginScreen(),
           '/dashboard': (context) => const DashboardScreen(),
         },
-      ),
     );
   }
 }
