@@ -48,6 +48,25 @@ class DashboardScreen extends StatelessWidget {
     return FutureBuilder(
       future: authService.currentUser,
       builder: (context, snapshot) {
+        if(snapshot.connectionState == ConnectionState.waiting){
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        if(!snapshot.hasData || snapshot.data == null){
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: Text(
+                "Failed to load user data",
+                style: GoogleFonts.outfit(color: Colors.white),
+              ),
+            ),
+          );
+        }
         final user = snapshot.data;
         return Scaffold(
           backgroundColor: Colors.black,

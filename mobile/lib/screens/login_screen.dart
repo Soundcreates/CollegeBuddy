@@ -84,16 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             finishLoading();
                             await authApi.startGoogleOauth();
                             finishLoading();
-                            final user = await authApi.currentUser;
-                            if(user != null){
-                              Navigator.pushReplacementNamed(context, "/dashboard");
-
-                            }else{
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Login failed, please try again later")),
-                              );
-                            }
-                       
+                             Navigator.pushReplacementNamed(context, "/dashboard");
 
                         },
                         style: ElevatedButton.styleFrom(
