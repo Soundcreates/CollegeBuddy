@@ -11,7 +11,7 @@ import (
 	"somaiya-ext/internal/models"
 	"strings"
 	"time"
-
+	"net/url"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
@@ -56,10 +56,12 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 // here in this googlecallback functionm, my main motto will be to get the user code and store teh access and refresh token in db
 func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
-	if state != OauthStateString { //here i get the state from the url
+	if !strings.HasPrefix(state, OauthStateString) { //here i get the state from the url
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
 		return
 	}
+
+	isMobile := strings.Contains(state, "|mobile")
 	//this is the code
 	code := r.FormValue("code")
 	if code == "" {
@@ -147,11 +149,15 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isMobile {
+		h.generateMobileCallbackHTML(w, existingUser, accessToken, refreshToken)
+		return
+	}
 	// Generate callback HTML for existing user login
 	h.generateCallbackHTML(w, existingUser, accessToken, refreshToken)
 
-	// Handle error case
 }
+
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, string, bool, error) {
 	w.Header().Set("Content-Type", "application/json")
@@ -350,6 +356,10 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 	return nil, true, response
 }
 
+//helper function to generate call back html for mobile
+func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {
+	w.Header().Set("Content-Type", "text/html")
+}
 // Helper function to generate callback HTML for OAuth success
 func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {
 	cfg := h.Config
