@@ -55,13 +55,14 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 
 // here in this googlecallback functionm, my main motto will be to get the user code and store teh access and refresh token in db
 func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
-	state := r.FormValue("state")
+	state := r.URL.Query().Get("state")
+	device := r.URL.Query().Get("device")
 	if !strings.HasPrefix(state, OauthStateString) { //here i get the state from the url
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
 		return
 	}
 
-	isMobile := strings.Contains(state, "|mobile")
+	isMobile := device == "mobile"
 	//this is the code
 	code := r.FormValue("code")
 	if code == "" {

@@ -33,7 +33,7 @@ class Authapi extends ChangeNotifier {
   final String baseUrl = "http://172.23.164.16:8080/api";
   final String prodUrl = "https://collegebuddy-service.onrender.com/api";
   Future<void> startGoogleOauth() async {
-    final url = Uri.parse("$prodUrl/auth/OAuth");
+    final url = Uri.parse("$prodUrl/auth/OAuth?state=kjssecodecell&device=mobile");
     try {
       isLoading = true;
       final response = await http.get(url);
