@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 class Authapi extends ChangeNotifier {
   final appLinks = AppLinks();
   bool isLoading = false;
-  void initDeepLinks() {
+  void initDeepLinks(BuildContext context) {
     appLinks.uriLinkStream.listen((uri) async {
       if (uri == null) return;
 
@@ -27,6 +27,7 @@ class Authapi extends ChangeNotifier {
       await storage.write(key: "refresh_token", value: refreshToken);
       await storage.write(key: "user_email", value: userEmail);
       print("Tokens and user email stored securely");
+      Navigator.of(context).pushReplacementNamed("/dashboard");
     });
   }
 
@@ -46,15 +47,15 @@ class Authapi extends ChangeNotifier {
     } finally {
       isLoading = false;
     }
-  }
+}
 
   Future<UserModel?> get currentUser async {
     final storage = FlutterSecureStorage();
-    final userEmail = await storage.read(key: "user_email");
-    if (userEmail == null) return null;
+    final userToken = await storage.read(key: "access_token");
+    if (userToken == null) return null;
 
     try {
-      final url = Uri.parse("$baseUrl/auth/get-profile?email=$userEmail");
+      final url = Uri.parse("$prodUrl/auth/get-profile?token=$userToken");
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

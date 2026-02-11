@@ -72,7 +72,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 
 	// Get student profile using the token
 	log.Println("Fetching profile")
-	profile, err := h.Profile(w, token)
+	profile, err := h.BackendProfile(token)
 	if err != nil {
 		log.Println("Failed to fetch profile:", err.Error())
 		http.Error(w, "failed to fetch profile: "+err.Error(), http.StatusInternalServerError)
@@ -206,7 +206,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error happened while filtering mails")
 	}
 	log.Println("Mails filtered successfully")
-	
+
 	//returning response
 	response := map[string]interface{}{
 		"success":  true,
@@ -265,7 +265,7 @@ func (h *Handler) HandleGetGmailMessage(w http.ResponseWriter, r *http.Request) 
 	log.Println("JWT validated for email:", email)
 
 	// Get student profile
-	profile, err := h.Profile(w, token)
+	profile, err := h.BackendProfile(token)
 	if err != nil {
 		http.Error(w, "failed to fetch profile: "+err.Error(), http.StatusInternalServerError)
 		return

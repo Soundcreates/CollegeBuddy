@@ -21,6 +21,7 @@ type Config struct {
 	EXTENSION_ID        string
 	DATABASE_URL        string
 	BACKEND_URL 	  string
+	MODE string
 }
 
 func LoadConfig() *Config {
@@ -53,6 +54,7 @@ func LoadConfig() *Config {
 		EXTENSION_ID:        os.Getenv("EXTENSION_ID"),
 		DATABASE_URL:        os.Getenv("DATABASE_URL"),
 		BACKEND_URL:   os.Getenv("BACKEND_URL"),
+		MODE: os.Getenv("MODE"),
 	}
 
 	return cfg

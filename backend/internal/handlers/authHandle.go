@@ -151,7 +151,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isMobile {
-		h.generateMobileCallbackHTML(w, existingUser, accessToken, refreshToken)
+		h.generateMobileCallbackHTML(w,r, existingUser, accessToken, refreshToken)
 		return
 	}
 	// Generate callback HTML for existing user login
@@ -245,69 +245,58 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo mode
 }
 
 // helper function to get student profile from JWT token
-func (h *Handler) Profile(w http.ResponseWriter, token string) (map[string]interface{}, error) {
-	// Parse JWT token to extract email
-	log.Println("Reached profile provider!")
+func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
-	log.Println("Parsing JWT token for profile retrieval")
-
-	claims, err := auth.ParseJwt(token, h.Config.JWT_SECRET)
-	if err != nil {
-		log.Println("Error parsing JWT token:", err.Error())
-		return nil, fmt.Errorf("invalid token: %v", err)
-	}
-	log.Println("JWT token parsed successfully")
-	log.Println("(Profile provider)=>Extracting email from token claims")
-	gmail, ok := claims["email"].(string)
-	if !ok {
-		return nil, fmt.Errorf("email not found in token claims")
-	}
-	log.Println("(Profile provider)=> Email extracted from token claims:", gmail)
-
-	var student models.Student
-	log.Println("(Profile provider)=> Querying database for student profile with email:", gmail)
-	err = h.DB.Where("svv_email = ?", gmail).First(&student).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			log.Println("(Profile provider)=> Student not found in database")
-			return nil, fmt.Errorf("student not found")
-		}
-		log.Println("(Profile provider)=> Database query error:", err.Error())
-		return nil, fmt.Errorf("error querying user profile: %v", err)
-	}
-
-	log.Println("(Profile provider)=> Student profile retrieved successfully for email:", student.SVVEmail)
-	log.Printf("(Profile provider)=> OAuth Access Token (first 20 chars): %.20s...", student.OAccessToken)
-	log.Printf("(Profile provider)=> OAuth Refresh Token (first 20 chars): %.20s...", student.ORefreshToken)
-
-	response := map[string]interface{}{
-		"success": true,
-		"message": "Profile fetched successfully",
-		"user": map[string]interface{}{
-			"id":              student.ID,
-			"name":            student.Name,
-			"svv_net_id":      student.SVVNetId,
-			"email":           student.SVVEmail,
-			"picture":         student.ProfilePic,
-			"verified_email":  student.VerifiedEmail,
-			"o_refresh_token": student.ORefreshToken,
-			"o_access_token":  student.OAccessToken,
-		},
-	}
-	log.Println("(Profile provider)=> Profile response prepared successfully")
-
-	return response, nil
-}
-
-func (h *Handler)ProfileFromMail(w http.ResponseWriter, r *http.Request){
-	mail  := r.URL.Query().Get("email")
-	if mail == "" {
-		http.Error(w, "Email is required", http.StatusBadRequest)
+	// Extract OAuth token from Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header required", http.StatusUnauthorized)
 		return
 	}
 
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader {
+		http.Error(w, "Invalid Authorization format", http.StatusUnauthorized)
+		return
+	}
+
+	// Validate token with Google
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	if err != nil {
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		return
+	}
+
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Failed to validate OAuth token", http.StatusUnauthorized)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, "Invalid OAuth token", http.StatusUnauthorized)
+		return
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+
+	var googleUser models.GoogleUser
+	if err := json.Unmarshal(body, &googleUser); err != nil {
+		http.Error(w, "Failed to parse Google response", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch user from DB using email
 	var student models.Student
-	 err := h.DB.Where("svv_email = ?", mail).First(&student).Error//its not returning an user because its storing the contents in the student var
+	err = h.DB.Where("svv_email = ?", googleUser.Email).First(&student).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "Student not found", http.StatusNotFound)
@@ -316,20 +305,48 @@ func (h *Handler)ProfileFromMail(w http.ResponseWriter, r *http.Request){
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-		
+
 	response := map[string]interface{}{
 		"success": true,
 		"message": "Profile fetched successfully",
 		"user": map[string]interface{}{
-			"id":              student.ID,
-			"name":            student.Name,
-			"svv_net_id":      student.SVVNetId,
-			"email":           student.SVVEmail,
-			"picture":         student.ProfilePic,
-			"verified_email":  student.VerifiedEmail,
-		} ,
+			"id":             student.ID,
+			"name":           student.Name,
+			"svv_net_id":     student.SVVNetId,
+			"email":          student.SVVEmail,
+			"picture":        student.ProfilePic,
+			"verified_email": student.VerifiedEmail,
+		},
 	}
+
 	json.NewEncoder(w).Encode(response)
+}
+
+
+//the below func will be used codebase wide  to get the profileof the user
+func (h *Handler) BackendProfile(token string) ( map[string]interface{}, error){
+	log.Println("fetching profile for codebase wide usage")
+	claim, err := auth.ParseJwt(token, h.Config.JWT_SECRET)
+	if err !=nil {
+		log.Println("Error at fetching backend profile: ", err)
+		return nil, err
+	}
+	email , ok := claim["email"].(string)
+	if !ok {
+		log.Println("Error extracting email from claims (email doesnt exist in db: " );
+		return nil, fmt.Errorf("Email not found")
+	}
+	var student models.Student
+	if err := h.DB.Where("svv_email = ?", email).First(&student).Error; err !=nil {
+		log.Println("Error extracting user data: ", err)
+		return nil, err
+	}
+	response := map[string]interface{}{
+		"user": student,
+	}
+return response , nil
+
+
 }
 
 // Helper function to parse JWT token using handler's config (for scraper handler)
@@ -391,10 +408,10 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 }
 
 //helper function to generate call back html for mobile
-func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {
+func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter,r *http.Request,  user models.Student, accessToken string, refreshToken string) {
 	w.Header().Set("Content-Type", "text/html")
 	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken),url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
-	w.Write([]byte(redirectURL))
+	http.Redirect(w,r,redirectURL,http.StatusFound)
 }
 // Helper function to generate callback HTML for OAuth success
 func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {

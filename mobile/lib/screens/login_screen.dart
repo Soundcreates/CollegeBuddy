@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool isLoading = false;
-  
+
   void finishLoading() {
 
     setState(() {
@@ -23,6 +23,12 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authApi = Provider.of<Authapi>(context);
+
+    @override
+    void initState() {
+      super.initState();
+      authApi.initDeepLinks(context);
+    }
     // Watch for auth changes to navigate
     return Scaffold(
       backgroundColor: Colors.black,
@@ -84,7 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             finishLoading();
                             await authApi.startGoogleOauth();
                             finishLoading();
-                             Navigator.pushReplacementNamed(context, "/dashboard");
 
                         },
                         style: ElevatedButton.styleFrom(
