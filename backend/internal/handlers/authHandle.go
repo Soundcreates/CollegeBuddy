@@ -63,6 +63,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isMobile := device == "mobile"
+	log.Printf("OAuth callback received. State: %s, Device: %s", state, device)
 	//this is the code
 	code := r.FormValue("code")
 	if code == "" {
