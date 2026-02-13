@@ -63,7 +63,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("OAuth callback received. State: %s, Device: %s", state, device)
+	log.Printf("OAuth callback received. State: %s, Device: %s", state )
 	//this is the code
 	code := r.FormValue("code")
 	if code == "" {
