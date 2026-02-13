@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:mobile/api/authApi.dart';
-import 'package:provider/provider.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -27,10 +26,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
     // For now simple navigation:
     // final auth = Provider.of<AuthService>(context, listen: false);
     // if (auth.isAuthenticated) ... else ...
-
+    print("user: $user");
     Navigator.pushReplacementNamed(
       context,
       user != null ? '/dashboard' : '/login',
+      arguments: user,
     );
   }
 

@@ -35,7 +35,7 @@ class Authapi extends ChangeNotifier {
   final String prodUrl = "https://collegebuddy-service.onrender.com/api";
   Future<void> startGoogleOauth() async {
     // Encode device info in the state parameter
-    final state = "kjssecodecell|device=mobile";
+    final state = "kjssecodecell";
     final url = Uri.parse("$prodUrl/auth/OAuth?state=$state");
     try {
       isLoading = true;
@@ -71,5 +71,13 @@ class Authapi extends ChangeNotifier {
       print("Error fetching user profile: $e");
       return null;
     }
+  }
+
+  Future<void> Logout() async {
+    final storage = FlutterSecureStorage();
+    await storage.delete(key: "access_token");
+    await storage.delete(key: "refresh_token");
+    await storage.delete(key: "user_email");
+    print("User logged out, tokens cleared");
   }
 }

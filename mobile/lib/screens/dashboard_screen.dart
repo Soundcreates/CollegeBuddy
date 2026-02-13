@@ -12,7 +12,7 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<Authapi>(context);
-    final user = authService.currentUser;
+    final user = ModalRoute.of(context)!.settings.arguments;
 
     // Mock Mail Data
     final List<Map<String, dynamic>> emails = [
@@ -48,15 +48,13 @@ class DashboardScreen extends StatelessWidget {
     return FutureBuilder(
       future: authService.currentUser,
       builder: (context, snapshot) {
-        if(snapshot.connectionState == ConnectionState.waiting){
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.black,
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
-       final user = snapshot.data;
+        final user = snapshot.data;
         return Scaffold(
           backgroundColor: Colors.black,
           body: SafeArea(
@@ -72,7 +70,7 @@ class DashboardScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello, ${user?.name!.split(' ')[0] ?? 'Student'}',
+                            'Hello, ${user?.name.split(' ')[0] ?? 'Student'}',
                             style: GoogleFonts.outfit(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -102,7 +100,7 @@ class DashboardScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-        
+
                 // Mail List
                 Expanded(
                   child: Container(
@@ -118,14 +116,24 @@ class DashboardScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "This Week's Mails",
-                            style: GoogleFonts.outfit(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
+                          Row(
+                            
+                            children: [
+                              Text(
+                                "This Week's Mails",
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
                             ),
+                            const Spacer(),
+                            ElevatedButton(onPressed: () async {
+                              await Authapi().Logout();
+                              Navigator.pushReplacementNamed(context, '/login');
+                            }, child: Text("Logout"))
+                            ],
                           ),
                           const SizedBox(height: 20),
                           Expanded(
@@ -160,7 +168,9 @@ class DashboardScreen extends StatelessWidget {
                                           Container(
                                             padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
-                                              color: Colors.blue.withOpacity(0.1),
+                                              color: Colors.blue.withOpacity(
+                                                0.1,
+                                              ),
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
@@ -183,7 +193,8 @@ class DashboardScreen extends StatelessWidget {
                                                     fontSize: 16,
                                                   ),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Text(
@@ -231,7 +242,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
         );
-      }
+      },
     );
   }
 }
