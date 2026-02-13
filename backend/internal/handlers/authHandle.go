@@ -7,11 +7,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"somaiya-ext/internal/auth"
 	"somaiya-ext/internal/models"
 	"strings"
 	"time"
-	"net/url"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
@@ -56,7 +57,16 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 // here in this googlecallback functionm, my main motto will be to get the user code and store teh access and refresh token in db
 func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
-	device := r.URL.Query().Get("device")
+	device := ""
+	// Parse device info from state if present
+	if state != "" {
+		parts := strings.Split(state, "|")
+		for _, part := range parts {
+			if strings.HasPrefix(part, "device=") {
+				device = strings.TrimPrefix(part, "device=")
+			}
+		}
+	}
 	if !strings.HasPrefix(state, OauthStateString) { //here i get the state from the url
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
 		return
@@ -152,14 +162,13 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isMobile {
-		h.generateMobileCallbackHTML(w,r, existingUser, accessToken, refreshToken)
+		h.generateMobileCallbackHTML(w, r, existingUser, accessToken, refreshToken)
 		return
 	}
 	// Generate callback HTML for existing user login
 	h.generateCallbackHTML(w, existingUser, accessToken, refreshToken)
 
 }
-
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.Student) (string, string, bool, error) {
 	w.Header().Set("Content-Type", "application/json")
@@ -323,30 +332,28 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-
-//the below func will be used codebase wide  to get the profileof the user
-func (h *Handler) BackendProfile(token string) ( map[string]interface{}, error){
+// the below func will be used codebase wide  to get the profileof the user
+func (h *Handler) BackendProfile(token string) (map[string]interface{}, error) {
 	log.Println("fetching profile for codebase wide usage")
 	claim, err := auth.ParseJwt(token, h.Config.JWT_SECRET)
-	if err !=nil {
+	if err != nil {
 		log.Println("Error at fetching backend profile: ", err)
 		return nil, err
 	}
-	email , ok := claim["email"].(string)
+	email, ok := claim["email"].(string)
 	if !ok {
-		log.Println("Error extracting email from claims (email doesnt exist in db: " );
+		log.Println("Error extracting email from claims (email doesnt exist in db: ")
 		return nil, fmt.Errorf("Email not found")
 	}
 	var student models.Student
-	if err := h.DB.Where("svv_email = ?", email).First(&student).Error; err !=nil {
+	if err := h.DB.Where("svv_email = ?", email).First(&student).Error; err != nil {
 		log.Println("Error extracting user data: ", err)
 		return nil, err
 	}
 	response := map[string]interface{}{
 		"user": student,
 	}
-return response , nil
-
+	return response, nil
 
 }
 
@@ -408,12 +415,13 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 	return nil, true, response
 }
 
-//helper function to generate call back html for mobile
-func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter,r *http.Request,  user models.Student, accessToken string, refreshToken string) {
+// helper function to generate call back html for mobile
+func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, r *http.Request, user models.Student, accessToken string, refreshToken string) {
 	w.Header().Set("Content-Type", "text/html")
-	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken),url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
-	http.Redirect(w,r,redirectURL,http.StatusFound)
+	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken), url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
+
 // Helper function to generate callback HTML for OAuth success
 func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Student, accessToken string, refreshToken string) {
 	cfg := h.Config
