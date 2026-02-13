@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:mobile/api/authApi.dart';
 import 'package:provider/provider.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -21,13 +22,16 @@ class _LoadingScreenState extends State<LoadingScreen> {
     await Future.delayed(const Duration(seconds: 3));
 
     if (!mounted) return;
-
+    final user = Authapi().currentUser;
     // Check auth status (AuthService should verify silent login if implemented)
     // For now simple navigation:
     // final auth = Provider.of<AuthService>(context, listen: false);
     // if (auth.isAuthenticated) ... else ...
 
-    Navigator.pushReplacementNamed(context, '/login');
+    Navigator.pushReplacementNamed(
+      context,
+      user != null ? '/dashboard' : '/login',
+    );
   }
 
   @override

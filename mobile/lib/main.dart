@@ -10,34 +10,33 @@ void main() {
     ChangeNotifierProvider(
       create: (_) => Authapi(),
       child: const CollegeBuddyApp(),
-    )
+    ),
   );
 }
 
 class CollegeBuddyApp extends StatelessWidget {
   const CollegeBuddyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
-      return MaterialApp(
-        title: 'CollegeBuddy',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: Colors.black,
-          colorScheme: ColorScheme.dark(
-            primary: Colors.blue,
-            secondary: Colors.blueAccent,
-            surface: Color(0xFF111111),
-          ),
+    return MaterialApp(
+      title: 'CollegeBuddy',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: Colors.black,
+        colorScheme: ColorScheme.dark(
+          primary: Colors.blue,
+          secondary: Colors.blueAccent,
+          surface: Color(0xFF111111),
         ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const LoadingScreen(),
-          '/login': (context) => const LoginScreen(),
-          '/dashboard': (context) => const DashboardScreen(),
-        },
+      ),
+      initialRoute: '/', // Start with the loading screen
+      routes: {
+        '/': (context) => const LoadingScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/dashboard': (context) => const DashboardScreen(),
+      },
     );
   }
 }

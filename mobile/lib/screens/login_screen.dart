@@ -13,7 +13,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool isLoading = false;
-
   void finishLoading() {
 
     setState(() {
@@ -21,15 +20,17 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
   @override
-  Widget build(BuildContext context) {
-    final authApi = Provider.of<Authapi>(context);
+  void initState() {
+    super.initState();
 
-    @override
-    void initState() {
-      super.initState();
-      authApi.initDeepLinks(context);
-    }
-    // Watch for auth changes to navigate
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<Authapi>().initDeepLinks(context);
+    });
+  }
+  @override
+  Widget build(BuildContext context) {
+    final authApi =context.read<Authapi>();
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -45,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 shape: BoxShape.circle,
                 color: Colors.blue.shade900.withOpacity(0.2),
               ),
-            ),
+            )
           ),
 
           SafeArea(

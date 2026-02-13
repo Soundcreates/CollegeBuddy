@@ -161,12 +161,8 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isMobile {
 		h.generateMobileCallbackHTML(w, r, existingUser, accessToken, refreshToken)
 		return
-	}
-	// Generate callback HTML for existing user login
-	h.generateCallbackHTML(w, existingUser, accessToken, refreshToken)
 
 }
 

@@ -56,18 +56,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           );
         }
-        if(!snapshot.hasData || snapshot.data == null){
-          return Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(
-              child: Text(
-                "Failed to load user data",
-                style: GoogleFonts.outfit(color: Colors.white),
-              ),
-            ),
-          );
-        }
-        final user = snapshot.data;
+       final user = snapshot.data;
         return Scaffold(
           backgroundColor: Colors.black,
           body: SafeArea(
@@ -83,7 +72,7 @@ class DashboardScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello, ${user?.name?.split(' ')[0] ?? 'Student'}',
+                            'Hello, ${user?.name!.split(' ')[0] ?? 'Student'}',
                             style: GoogleFonts.outfit(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
