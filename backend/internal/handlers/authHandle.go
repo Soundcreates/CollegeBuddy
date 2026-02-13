@@ -245,19 +245,14 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Extract OAuth token from Authorization header
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Authorization header required", http.StatusUnauthorized)
-		return
-	}
-
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	if tokenString == authHeader {
-		http.Error(w, "Invalid Authorization format", http.StatusUnauthorized)
-		return
-	}
-
 	// Validate token with Google
+
+	query := r.URL.Query()
+	tokenString := query.Get("token")
+	if tokenString == "" {
+		http.Error(w, "Token is required", http.StatusBadRequest)
+		return
+	}
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
