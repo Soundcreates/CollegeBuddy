@@ -56,8 +56,8 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 
 // here in this googlecallback functionm, my main motto will be to get the user code and store teh access and refresh token in db
 func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
+	log.Println("Google callback handler reached")
 	state := r.URL.Query().Get("state")
-	
 	if !strings.HasPrefix(state, OauthStateString) { //here i get the state from the url
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
 		return
@@ -136,6 +136,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Generate callback HTML for new user registration
+			h.generateMobileCallbackHTML(w,r, userInfo, accessToken, refreshToken)
 			h.generateCallbackHTML(w, userInfo, accessToken, refreshToken)
 			return
 		}
@@ -249,45 +250,20 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	tokenString := query.Get("token")
+	fmt.Println("Token from flutter: ", tokenString)
 	if tokenString == "" {
 		http.Error(w, "Token is required", http.StatusBadRequest)
 		return
 	}
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	req, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
-	if err != nil {
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
-		return
-	}
-
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		http.Error(w, "Failed to validate OAuth token", http.StatusUnauthorized)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		http.Error(w, "Invalid OAuth token", http.StatusUnauthorized)
-		return
-	}
-
-	body, _ := io.ReadAll(resp.Body)
-
-	var googleUser models.GoogleUser
-	if err := json.Unmarshal(body, &googleUser); err != nil {
-		http.Error(w, "Failed to parse Google response", http.StatusInternalServerError)
+	claims, err := auth.ParseJwt(tokenString, h.Config.JWT_SECRET)
+	if err !=nil{
+		log.Print("Error in extracting claims from jwt token")
 		return
 	}
 
 	// Fetch user from DB using email
 	var student models.Student
-	err = h.DB.Where("svv_email = ?", googleUser.Email).First(&student).Error
+	err = h.DB.Where("svv_email = ?", claims["email"].(string)).First(&student).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "Student not found", http.StatusNotFound)
@@ -399,6 +375,9 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 // helper function to generate call back html for mobile
 func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, r *http.Request, user models.Student, accessToken string, refreshToken string) {
 	w.Header().Set("Content-Type", "text/html")
+
+	log.Printf("Sending\nAccess token: %s\nRefresh Token:%s", accessToken, refreshToken)
+	
 	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken), url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }

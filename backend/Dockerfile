@@ -3,8 +3,10 @@ WORKDIR /backend
 COPY go.mod ./
 COPY go.sum ./
 RUN go mod tidy
+
+RUN go install github.com/air-verse/air@latest
+ENV PATH="/go/bin:${PATH}"
 COPY . .
 
-RUN go build -o main ./cmd/server
 EXPOSE 8080
-CMD ["./main"]
+CMD ["air"]

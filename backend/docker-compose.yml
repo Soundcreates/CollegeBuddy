@@ -1,11 +1,30 @@
 version: "3.9"
 
 services:
- backend:
+  db:
+    image: postgres:15
+    container_name: collegebuddy_db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks: 
+      - collegebuddy_network
+
+  backend:
     build: .
+    depends_on:
+      - db
     container_name: collegebuddy_backend
     ports:
       - "8080:8080"
+    volumes:
+      - .:/backend
+    command: air
     networks: 
       - collegebuddy_network
     env_file:
@@ -23,6 +42,7 @@ services:
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
       EXTENSION_ID: ${EXTENSION_ID}
       DATABASE_URL: ${DATABASE_URL}
+
 volumes:
   pgdata:
 

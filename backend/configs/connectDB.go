@@ -11,7 +11,7 @@ import (
 func ConnectDB(cfg *Config) (*gorm.DB, error) {
 	
 	var dsn string
-	if cfg.MODE == "production" || cfg.DATABASE_URL != "" {
+	if cfg.MODE == "production"  {
 		fmt.Println("Using DATABASE_URL for connection")
 		dsn = cfg.DATABASE_URL
 	} else {

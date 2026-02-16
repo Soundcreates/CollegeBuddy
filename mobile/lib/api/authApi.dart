@@ -31,12 +31,12 @@ class Authapi extends ChangeNotifier {
     });
   }
 
-  final String baseUrl = "http://172.23.164.16:8080/api";
+  final String baseUrl = "http://192.168.29.165:8080/api";
   final String prodUrl = "https://collegebuddy-service.onrender.com/api";
   Future<void> startGoogleOauth() async {
     // Encode device info in the state parameter
     final state = "kjssecodecell";
-    final url = Uri.parse("$prodUrl/auth/OAuth?state=$state");
+    final url = Uri.parse("$baseUrl/auth/OAuth?state=$state");
     try {
       isLoading = true;
       final response = await http.get(url);
@@ -55,7 +55,7 @@ class Authapi extends ChangeNotifier {
     final storage = FlutterSecureStorage();
     final userToken = await storage.read(key: "access_token");
     if (userToken == null) return null;
-
+    print("Trying to fetch user profile of token: $userToken");
     try {
       final url = Uri.parse("$prodUrl/auth/get-profile?token=$userToken");
       final response = await http.get(url);
@@ -65,6 +65,7 @@ class Authapi extends ChangeNotifier {
         return user;
       } else {
         print("Failed to fetch user profile: ${response.statusCode}");
+        print(response);
         return null;
       }
     } catch (e) {
