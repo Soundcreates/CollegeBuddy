@@ -33,7 +33,18 @@ class DashboardScreen extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.black,
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min, // Add this to keep the column centered
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 15),
+                  Text("Loading Mails", style: TextStyle(color: Colors.white)),
+                ],
+              ),
+            ),
           );
         }
         if (!snapshot.hasData) {

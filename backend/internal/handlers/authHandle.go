@@ -63,7 +63,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	            'Dear Students, please remember to submit your final projects by Friday midnight. Attachments below.',log.Printf("OAuth callback received. State: %s, Device: %s", state )
+	log.Printf("OAuth callback received. State: %s, Device: %s", state)
 	//this is the code
 	code := r.FormValue("code")
 	if code == "" {
@@ -136,7 +136,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Generate callback HTML for new authHauser registration
-			h.generateMobileCallbackHTML(w,r, userInfo, accessToken, refreshToken)
+			h.generateMobileCallbackHTML(w, r, userInfo, accessToken, refreshToken)
 			return
 		}
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
@@ -150,9 +150,9 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Logging in failed,aborting...")
 		return
 	}
-		fmt.Println("Sending mobile callback")
-		h.generateMobileCallbackHTML(w, r, existingUser, accessToken, refreshToken)
-		return
+	fmt.Println("Sending mobile callback")
+	h.generateMobileCallbackHTML(w, r, existingUser, accessToken, refreshToken)
+	return
 
 }
 
@@ -311,13 +311,13 @@ func (h *Handler) BackendProfile(token string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	userMap := map[string]interface{}{
-		"id": student.ID,
-		"name": student.Name,
-		"svv_net_id": student.SVVNetId,
-		"email": student.SVVEmail,
-		"picture": student.ProfilePic,
-		"verified_email": student.VerifiedEmail,
-		"o_access_token": student.OAccessToken,
+		"id":              student.ID,
+		"name":            student.Name,
+		"svv_net_id":      student.SVVNetId,
+		"email":           student.SVVEmail,
+		"picture":         student.ProfilePic,
+		"verified_email":  student.VerifiedEmail,
+		"o_access_token":  student.OAccessToken,
 		"o_refresh_token": student.ORefreshToken,
 	}
 	response := map[string]interface{}{
@@ -389,7 +389,6 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, r *http.Request, user models.Student, accessToken string, refreshToken string) {
 	w.Header().Set("Content-Type", "text/html")
 
-	
 	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken), url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
 	log.Println("Redirecting to: ", redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusFound)
@@ -453,5 +452,3 @@ func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Studen
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(callbackHTML))
 }
-
-

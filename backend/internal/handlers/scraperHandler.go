@@ -79,7 +79,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Profile fetched successfully")
+	log.Println("Profile fetched successfully: ", profile)
 	// Extract student data from profile response
 	log.Println("Extracting student data")
 
@@ -170,10 +170,10 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 			}
 
 			log.Println("Looking for attatchments in: ", msg.Id)
-			var allAttatchments []Attatchment
+			var allAttatchments []models.Attatchment
 			for _, part := range msg.Payload.Parts {
 				if part.Filename != "" && part.Body != nil && part.Body.AttachmentId != "" {
-					allAttatchments = append(allAttatchments, Attatchment{
+					allAttatchments = append(allAttatchments, models.Attatchment{
 						Filename:      part.Filename,
 						MimeType:      part.MimeType,
 						AttatchmentId: part.Body.AttachmentId,
