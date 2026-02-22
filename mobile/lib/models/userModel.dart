@@ -16,11 +16,11 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as String,
-      email: json['svv_email'] as String,
-      name: json['name'] as String,
-      profilePic: json['profile_pic'] as String,
-      verifiedEmail: json['verified_email'] as bool,
+      id: (json['id'] ?? '').toString(),
+      email: (json['svv_email'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      profilePic: (json['profile_pic'] ?? '').toString(),
+      verifiedEmail: json['verified_email'] ?? false,
     );
   }
 }

@@ -63,7 +63,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("OAuth callback received. State: %s, Device: %s", state )
+	            'Dear Students, please remember to submit your final projects by Friday midnight. Attachments below.',log.Printf("OAuth callback received. State: %s, Device: %s", state )
 	//this is the code
 	code := r.FormValue("code")
 	if code == "" {
@@ -135,9 +135,8 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 				fmt.Println("Registration failed, aborting...")
 				return
 			}
-			// Generate callback HTML for new user registration
+			// Generate callback HTML for new authHauser registration
 			h.generateMobileCallbackHTML(w,r, userInfo, accessToken, refreshToken)
-			h.generateCallbackHTML(w, userInfo, accessToken, refreshToken)
 			return
 		}
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
@@ -151,7 +150,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Logging in failed,aborting...")
 		return
 	}
-
+		fmt.Println("Sending mobile callback")
 		h.generateMobileCallbackHTML(w, r, existingUser, accessToken, refreshToken)
 		return
 
@@ -199,6 +198,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 		JWTToken:   jwtAccessToken,
 		JWTRefresh: jwtRefreshToken,
 	}).Error
+
 	if err != nil {
 		log.Println("Error assigning jwt to the model")
 		http.Error(w, "Error assigning the jwt to the user", http.StatusExpectationFailed)
@@ -243,29 +243,32 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request, userInfo mode
 
 // helper function to get student profile from JWT token
 func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
+	log.Println("Profile function reached")
 	w.Header().Set("Content-Type", "application/json")
-
-	// Extract OAuth token from Authorization header
-	// Validate token with Google
 
 	query := r.URL.Query()
 	tokenString := query.Get("token")
-	fmt.Println("Token from flutter: ", tokenString)
+	fmt.Println("[DEBUG] Token from flutter: ", tokenString)
+	fmt.Println("[DEBUG] JWT_SECRET used: ", h.Config.JWT_SECRET)
 	if tokenString == "" {
 		http.Error(w, "Token is required", http.StatusBadRequest)
 		return
 	}
 	claims, err := auth.ParseJwt(tokenString, h.Config.JWT_SECRET)
-	if err !=nil{
-		log.Print("Error in extracting claims from jwt token")
+	if err != nil {
+		log.Print("[DEBUG] Error in extracting claims from jwt token: ", err)
+		http.Error(w, "Invalid JWT token: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
+	log.Println("Successfully extracted claims from jwt token")
 
 	// Fetch user from DB using email
 	var student models.Student
 	err = h.DB.Where("svv_email = ?", claims["email"].(string)).First(&student).Error
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Println("Error finding student")
 			http.Error(w, "Student not found", http.StatusNotFound)
 			return
 		}
@@ -376,9 +379,9 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, r *http.Request, user models.Student, accessToken string, refreshToken string) {
 	w.Header().Set("Content-Type", "text/html")
 
-	log.Printf("Sending\nAccess token: %s\nRefresh Token:%s", accessToken, refreshToken)
 	
 	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken), url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
+	log.Println("Redirecting to: ", redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 

@@ -23,7 +23,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - .:/backend
+      - .:/backend:Z
     command: air
     networks: 
       - collegebuddy_network

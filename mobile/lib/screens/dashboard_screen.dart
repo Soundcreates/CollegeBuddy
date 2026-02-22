@@ -5,25 +5,30 @@ import 'package:mobile/api/authApi.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'email_view_screen.dart';
+import "package:mobile/models/userModel.dart";
+import "package:mobile/api/mailApi.dart";
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<Authapi>(context);
-    final user = ModalRoute.of(context)!.settings.arguments;
+    final authService = context.watch<AuthApi>();
+    final mailService = context.watch<MailApi>();
 
-    // Mock Mail Data
+
+      // Mock Mail Data
     final List<Map<String, dynamic>> emails = [
       {
         'title': 'Project Deadline',
-        'sender': 'Professor Smith',
         'subject': 'Final Submission Details',
+        'sender': 'Professor Smith',
         'date': DateTime.now().subtract(const Duration(hours: 2)),
         'body':
-            'Dear Students, please remember to submit your final projects by Friday midnight. Attachments below.',
+          'Dear Students, please remember to submit your final projects by Friday midnight. Attachments below.',
         'attachments': ['guidelines.pdf', 'rubric.docx'],
+        
       },
       {
         'title': 'Library Due',
@@ -90,12 +95,12 @@ class DashboardScreen extends StatelessWidget {
                       CircleAvatar(
                         radius: 24,
                         backgroundImage: user?.profilePic != null
-                            ? NetworkImage(user!.profilePic!)
-                            : null,
+                          ? NetworkImage(user!.profilePic)
+                          : null,
                         backgroundColor: Colors.grey.shade800,
                         child: user?.profilePic == null
-                            ? const Icon(Icons.person, color: Colors.white)
-                            : null,
+                          ? const Icon(Icons.person, color: Colors.white)
+                          : null,
                       ),
                     ],
                   ),
@@ -130,7 +135,8 @@ class DashboardScreen extends StatelessWidget {
                             ),
                             const Spacer(),
                             ElevatedButton(onPressed: () async {
-                              await Authapi().Logout();
+                              // Implement logout logic in AuthApi if needed
+                              // await AuthApi().logout();
                               Navigator.pushReplacementNamed(context, '/login');
                             }, child: Text("Logout"))
                             ],

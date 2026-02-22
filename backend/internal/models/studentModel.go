@@ -12,8 +12,8 @@ type Student struct {
 	SVVEmail           string `json:"email" gorm:"column:svv_email;unique"`
 	ProfilePic         string `json:"picture"`
 	VerifiedEmail      bool   `json:"verified_email"`
-	ORefreshToken      string `json:"o_refresh_token"`
-	OAccessToken       string `json:"o_access_token"`
+	ORefreshToken      string `json:"o_refresh_token" gorm:"column:o_refresh_token"`
+	OAccessToken       string `json:"o_access_token" gorm:"column:o_access_token"`
 	OAccessTokenExpiry int64  `json:"o_access_token_expiry"` // Unix timestamp
 	JWTToken           string `json:"jwt-token" gorm:"column:jwt-token"`
 	JWTRefresh         string `json:"jwt-refresh" gorm:"column:jwt-refresh"`

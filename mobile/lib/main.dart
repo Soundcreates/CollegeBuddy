@@ -4,12 +4,17 @@ import 'package:provider/provider.dart';
 import 'screens/loading_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import "package:mobile/api/mailApi.dart";
+
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => Authapi(),
-      child: const CollegeBuddyApp(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthApi()),
+        ChangeNotifierProvider(create: (_) => MailApi()),
+      ],
+      child: CollegeBuddyApp(),
     ),
   );
 }

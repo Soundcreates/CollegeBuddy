@@ -23,13 +23,13 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<Authapi>().initDeepLinks(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) { //we are doing this because in init state, everything inside it gets done before the widget gets actually built wit its ui
+      context.read<AuthApi>().initDeepLinks(context);
     });
   }
   @override
   Widget build(BuildContext context) {
-    final authApi =context.read<Authapi>();
+    final authApi =context.read<AuthApi>();
 
     return Scaffold(
       backgroundColor: Colors.black,

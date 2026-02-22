@@ -21,7 +21,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     await Future.delayed(const Duration(seconds: 3));
 
     if (!mounted) return;
-    final user = Authapi().currentUser;
+    final user = AuthApi().currentUser;
     // Check auth status (AuthService should verify silent login if implemented)
     // For now simple navigation:
     // final auth = Provider.of<AuthService>(context, listen: false);
