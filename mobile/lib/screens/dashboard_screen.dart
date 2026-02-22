@@ -7,6 +7,7 @@ import 'package:animate_do/animate_do.dart';
 import 'email_view_screen.dart';
 import "package:mobile/models/userModel.dart";
 import "package:mobile/api/mailApi.dart";
+import "package:mobile/models/mailModel.dart";
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -17,41 +18,17 @@ class DashboardScreen extends StatelessWidget {
     final authService = context.watch<AuthApi>();
     final mailService = context.watch<MailApi>();
 
+    Future<List<dynamic>> _loadDashboardData() async {
+        final user = await authService.currentUser;
+        final mails = await mailService.fetchUserMails();
 
+        return [user,mails];
+      }
       // Mock Mail Data
-    final List<Map<String, dynamic>> emails = [
-      {
-        'title': 'Project Deadline',
-        'subject': 'Final Submission Details',
-        'sender': 'Professor Smith',
-        'date': DateTime.now().subtract(const Duration(hours: 2)),
-        'body':
-          'Dear Students, please remember to submit your final projects by Friday midnight. Attachments below.',
-        'attachments': ['guidelines.pdf', 'rubric.docx'],
-        
-      },
-      {
-        'title': 'Library Due',
-        'sender': 'Campus Library',
-        'subject': 'Overdue Books Notification',
-        'date': DateTime.now().subtract(const Duration(hours: 5)),
-        'body':
-            'You have 2 books due tomorrow. Please return them to avoid fines.',
-        'attachments': [],
-      },
-      {
-        'title': 'Internship Opportunity',
-        'sender': 'Placement Cell',
-        'subject': 'Google Summer of Code',
-        'date': DateTime.now().subtract(const Duration(days: 1)),
-        'body':
-            'Applications are now open for GSoC 2026. Apply before the deadline!',
-        'attachments': ['brochure.pdf'],
-      },
-    ];
+    // Removed mock emails. Will use fetched mails from backend.
 
     return FutureBuilder(
-      future: authService.currentUser,
+      future: _loadDashboardData(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -59,7 +36,26 @@ class DashboardScreen extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        final user = snapshot.data;
+        if (!snapshot.hasData) {
+          return const Center(child: Text("Failed to load data"));
+        }
+        final user = snapshot.data![0] as UserModel? ?? null;
+        final mails = snapshot.data![1] as List<MailModel>? ?? [];
+        if(user == null){
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+              Future.delayed(const Duration(seconds: 2), () {
+                  if(context.mounted){
+                      Navigator.pushReplacementNamed(context, "/login");
+                    }
+
+                });
+            });
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+
+          }
+        print("Total no of mails loaded: ${mails.length}");
         return Scaffold(
           backgroundColor: Colors.black,
           body: SafeArea(
@@ -94,11 +90,11 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       CircleAvatar(
                         radius: 24,
-                        backgroundImage: user?.profilePic != null
+                        backgroundImage: user?.profilePic != null && user!.profilePic.isNotEmpty
                           ? NetworkImage(user!.profilePic)
                           : null,
                         backgroundColor: Colors.grey.shade800,
-                        child: user?.profilePic == null
+                        child: user?.profilePic == null || user!.profilePic.isEmpty
                           ? const Icon(Icons.person, color: Colors.white)
                           : null,
                       ),
@@ -122,7 +118,6 @@ class DashboardScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            
                             children: [
                               Text(
                                 "This Week's Mails",
@@ -130,100 +125,102 @@ class DashboardScreen extends StatelessWidget {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
-                                letterSpacing: 0.5,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
-                            ),
-                            const Spacer(),
-                            ElevatedButton(onPressed: () async {
-                              // Implement logout logic in AuthApi if needed
-                              // await AuthApi().logout();
-                              Navigator.pushReplacementNamed(context, '/login');
-                            }, child: Text("Logout"))
+                              const Spacer(),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.pushReplacementNamed(context, '/login');
+                                },
+                                child: Text("Logout"),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 20),
                           Expanded(
-                            child: ListView.builder(
-                              itemCount: emails.length,
-                              itemBuilder: (context, index) {
-                                final mail = emails[index];
-                                return FadeInUp(
-                                  delay: Duration(milliseconds: index * 100),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              EmailViewScreen(email: mail),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 16),
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.05),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: Colors.white.withOpacity(0.05),
-                                        ),
+                            child: mails.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      "No mails found.",
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white54,
+                                        fontSize: 16,
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue.withOpacity(
-                                                0.1,
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    itemCount: mails.length,
+                                    itemBuilder: (context, index) {
+                                      final mail = mails[index];
+                                      return FadeInUp(
+                                        delay: Duration(milliseconds: index * 100),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => EmailViewScreen(email: mail),
                                               ),
-                                              shape: BoxShape.circle,
+                                            );
+                                          },
+                                          child: Container(
+                                            margin: const EdgeInsets.only(bottom: 16),
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.05),
+                                              borderRadius: BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: Colors.white.withOpacity(0.05),
+                                              ),
                                             ),
-                                            child: const Icon(
-                                              Icons.mail_outline,
-                                              color: Colors.blue,
-                                              size: 20,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                            child: Row(
                                               children: [
-                                                Text(
-                                                  mail['subject'],
-                                                  style: GoogleFonts.outfit(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 16,
+                                                Container(
+                                                  padding: const EdgeInsets.all(12),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.blue.withOpacity(0.1),
+                                                    shape: BoxShape.circle,
                                                   ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  child: const Icon(
+                                                    Icons.mail_outline,
+                                                    color: Colors.blue,
+                                                    size: 20,
+                                                  ),
                                                 ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  mail['sender'] +
-                                                      ' • ' +
-                                                      DateFormat(
-                                                        'MMM d',
-                                                      ).format(mail['date']),
-                                                  style: GoogleFonts.outfit(
-                                                    color: Colors.grey,
-                                                    fontSize: 12,
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        mail.subject,
+                                                        style: GoogleFonts.outfit(
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 16,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        mail.from + ' • ' + mail.date,
+                                                        style: GoogleFonts.outfit(
+                                                          color: Colors.grey,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
-                            ),
                           ),
                           // Footer
                           Center(

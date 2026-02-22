@@ -310,8 +310,18 @@ func (h *Handler) BackendProfile(token string) (map[string]interface{}, error) {
 		log.Println("Error extracting user data: ", err)
 		return nil, err
 	}
+	userMap := map[string]interface{}{
+		"id": student.ID,
+		"name": student.Name,
+		"svv_net_id": student.SVVNetId,
+		"email": student.SVVEmail,
+		"picture": student.ProfilePic,
+		"verified_email": student.VerifiedEmail,
+		"o_access_token": student.OAccessToken,
+		"o_refresh_token": student.ORefreshToken,
+	}
 	response := map[string]interface{}{
-		"user": student,
+		"user": userMap,
 	}
 	return response, nil
 
@@ -443,3 +453,5 @@ func (h *Handler) generateCallbackHTML(w http.ResponseWriter, user models.Studen
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(callbackHTML))
 }
+
+

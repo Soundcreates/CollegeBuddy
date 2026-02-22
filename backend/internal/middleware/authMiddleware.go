@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"somaiya-ext/internal/auth"
 	"somaiya-ext/internal/handlers"
 	"somaiya-ext/internal/models"
@@ -34,7 +33,7 @@ func WithAuth(h *handlers.Handler) func(http.HandlerFunc) http.HandlerFunc {
 
 			// Parse and validate JWT token
 			log.Println("Parsing the jwt token ")
-			_, err := auth.ParseJwt(tokenString, os.Getenv("JWT_SECRET"))
+			_, err := auth.ParseJwt(tokenString, h.Config.JWT_SECRET)
 			if err == nil {
 				// Token is valid, proceed to next handler
 				log.Println("Token validation successful")

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-
+import "package:mobile/models/mailModel.dart";
 class EmailViewScreen extends StatelessWidget {
-  final Map<String, dynamic> email;
+  final MailModel email;
 
   const EmailViewScreen({super.key, required this.email});
 
@@ -25,7 +25,7 @@ class EmailViewScreen extends StatelessWidget {
           children: [
             // Subject
             Text(
-              email['subject'] ?? 'No Subject',
+              email.subject.isNotEmpty ? email.subject : 'No Subject',
               style: GoogleFonts.outfit(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -40,7 +40,7 @@ class EmailViewScreen extends StatelessWidget {
                 CircleAvatar(
                   backgroundColor: Colors.blue.withOpacity(0.2),
                   child: Text(
-                    (email['sender']?[0] ?? 'S').toUpperCase(),
+                    (email.from.isNotEmpty ? email.from[0] : 'S').toUpperCase(),
                     style: GoogleFonts.outfit(color: Colors.blue),
                   ),
                 ),
@@ -49,7 +49,7 @@ class EmailViewScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      email['sender'] ?? 'Unknown Sender',
+                      email.from.isNotEmpty ? email.from : 'Unknown Sender',
                       style: GoogleFonts.outfit(
                         color: Colors.white,
                         fontSize: 16,
@@ -57,10 +57,8 @@ class EmailViewScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      email['date'] != null
-                          ? DateFormat(
-                              'MMM d, y • h:mm a',
-                            ).format(email['date'])
+                      email.date.isNotEmpty
+                          ? email.date
                           : '',
                       style: GoogleFonts.outfit(
                         color: Colors.grey,
@@ -82,7 +80,7 @@ class EmailViewScreen extends StatelessWidget {
                 border: Border.all(color: Colors.white.withOpacity(0.05)),
               ),
               child: Text(
-                email['body'] ?? 'No content',
+                email.body,
                 style: GoogleFonts.outfit(
                   color: Colors.white70,
                   fontSize: 16,
@@ -92,8 +90,7 @@ class EmailViewScreen extends StatelessWidget {
             ),
 
             // Attachments
-            if (email['attachments'] != null &&
-                (email['attachments'] as List).isNotEmpty) ...[
+            if ((email.attachments ?? []).isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
                 'Attachments',
@@ -104,7 +101,7 @@ class EmailViewScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              ...((email['attachments'] as List).map(
+              ...(email.attachments.map(
                 (att) => Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: Container(

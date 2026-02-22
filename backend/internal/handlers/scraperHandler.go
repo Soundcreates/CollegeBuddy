@@ -2,15 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"somaiya-ext/internal/models"
 	"somaiya-ext/service"
 	"strings"
-	"fmt"
 	"time"
 )
-
 
 type ParsedMessage struct {
 	ID       string `json:"id"`
@@ -30,10 +29,12 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	log.Println("extracting token from Authorization header")
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
+
 		log.Println("Auth header missing")
 		http.Error(w, "missing authorization header", http.StatusUnauthorized)
 		return
 	}
+
 	log.Println("Authorization header found")
 	log.Println("Auth Header: ", authHeader)
 	log.Println("Removing Bearer prefix from token")
@@ -67,7 +68,6 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "email not found in token", http.StatusUnauthorized)
 		return
 	}
-
 	log.Println("JWT validated for email:", email)
 
 	// Get student profile using the token
@@ -83,10 +83,20 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	// Extract student data from profile response
 	log.Println("Extracting student data")
 
-	studentData, ok := profile["user"].(map[string]interface{})
+	userRaw := profile["user"]
+	log.Printf("[DEBUG] userRaw value: %+v, type: %T", userRaw, userRaw)
+	if userRaw == nil {
+		log.Println("User data is nil in profile")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "user data missing"})
+		return
+	}
+	studentData, ok := userRaw.(map[string]interface{})
 	if !ok {
+		log.Printf("User data type: %T", userRaw)
 		log.Println("Invalid student data in profile - cannot convert to map")
-		http.Error(w, "invalid student data", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid student data"})
 		return
 	}
 
@@ -127,15 +137,15 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 	if weekday == 0 { //if its a sunday
 		weekday = 7
 	}
-	monday := now.AddDate(0,0,-weekday+1)
+	monday := now.AddDate(0, 0, -weekday+1)
 	monday = time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, monday.Location())
-	sunday := monday.AddDate(0,0,6)
+	sunday := monday.AddDate(0, 0, 6)
 	sunday = time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 23, 59, 59, 0, sunday.Location())
 
 	after := monday.Unix()
 	before := sunday.Unix()
 
-	query := fmt.Sprintf("after:%d before:%d", after,before)
+	query := fmt.Sprintf("after:%d before:%d", after, before)
 	pageToken := ""
 	var parsedMessages []models.GmailMessage
 	for {
@@ -153,9 +163,22 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		for i := range messages.Messages {
 			log.Printf("Fetching  metadata of message ID: %s\n", messages.Messages[i].Id)
 			msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders("From", "To", "Subject", "Date").Do()
+
 			if err != nil {
 				log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
 				continue
+			}
+
+			log.Println("Looking for attatchments in: ", msg.Id)
+			var allAttatchments []Attatchment
+			for _, part := range msg.Payload.Parts {
+				if part.Filename != "" && part.Body != nil && part.Body.AttachmentId != "" {
+					allAttatchments = append(allAttatchments, Attatchment{
+						Filename:      part.Filename,
+						MimeType:      part.MimeType,
+						AttatchmentId: part.Body.AttachmentId,
+					})
+				}
 			}
 
 			svvEmail := ""
@@ -164,9 +187,10 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 			}
 
 			msgData := models.GmailMessage{
-				ID:       msg.Id,
-				ThreadID: msg.ThreadId,
-				Student:  svvEmail,
+				ID:           msg.Id,
+				ThreadID:     msg.ThreadId,
+				Student:      svvEmail,
+				Attatchments: allAttatchments,
 			}
 
 			// Extract headers from the actual message payload

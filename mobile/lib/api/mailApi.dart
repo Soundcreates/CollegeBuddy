@@ -10,14 +10,14 @@ class MailApi extends ChangeNotifier {
   final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev/api";
   final FlutterSecureStorage storage = FlutterSecureStorage();
 
- Future<List<MailModel>?> fetchUserMails(UserModel user) async {
+ Future<List<MailModel>?> fetchUserMails() async {
     print("Fetching user mails");
     final url = "$baseUrl/scrape/gmail";
     try {
       final accessToken = await storage.read(key: "access_token");
       if (accessToken == null || accessToken.isEmpty) {
         print("Access token not found or empty");
-        return null;
+        return [];
       }
       print("Access token successfully extracted");
       final finalUrl = Uri.parse(url);
@@ -28,20 +28,21 @@ class MailApi extends ChangeNotifier {
           "Content-Type": "application/json"
         },
       );
+      print("Response statuscode: ${response.statusCode}");
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        // Assuming decoded["messages"] is a List
         final mailResults = (decoded["messages"] as List)
           .map((mail) => MailModel.fromJson(mail as Map<String, dynamic>))
           .toList();
+        print("Successfully fetched mails");
         return mailResults.cast<MailModel>();
       } else {
         print("Failed to fetch mails: ${response.statusCode}");
-        return null;
+        return [];
       }
     } catch (e) {
       print("Error fetching mails: $e");
-      return null;
+      return [];
     }
   }
 }
