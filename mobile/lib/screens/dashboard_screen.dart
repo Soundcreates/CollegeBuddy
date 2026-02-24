@@ -8,6 +8,7 @@ import 'email_view_screen.dart';
 import "package:mobile/models/userModel.dart";
 import "package:mobile/api/mailApi.dart";
 import "package:mobile/models/mailModel.dart";
+import "package:mobile/cache/BigDataRepository.dart";
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -16,11 +17,11 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authService = context.watch<AuthApi>();
-    final mailService = context.watch<MailApi>();
+    final BigDataRepository mailRepo = BigDataRepository();
 
     Future<List<dynamic>> _loadDashboardData() async {
-        final user = await authService.currentUser;
-        final mails = await mailService.fetchUserMails();
+        final user = await mailRepo.fetchUserData() as UserModel? ?? null;
+        final mails = await mailRepo.fetchMailData() as List<MailModel>? ?? [];
 
         return [user,mails];
       }
@@ -142,7 +143,10 @@ class DashboardScreen extends StatelessWidget {
                               const Spacer(),
                               ElevatedButton(
                                 onPressed: () async {
+                                  await mailRepo.logoutAndClearCache();
+                                  print("cache cleared, user logged out");
                                   Navigator.pushReplacementNamed(context, '/login');
+
                                 },
                                 child: Text("Logout"),
                               ),
