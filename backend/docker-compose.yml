@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:15
@@ -19,6 +17,7 @@ services:
     build: .
     depends_on:
       - db
+      - python
     container_name: collegebuddy_backend
     ports:
       - "8080:8080"
@@ -42,6 +41,27 @@ services:
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
       EXTENSION_ID: ${EXTENSION_ID}
       DATABASE_URL: ${DATABASE_URL}
+      PYTHON_AI_SERVICE_URL: ${PYTHON_AI_SERVICE_URL:-http://python:8000/text-classification}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  python:
+    build:
+      context: ../scraperService
+      dockerfile: Dockerfile
+    container_name: collegebuddy_python
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../scraperService:/python:Z
+    env_file:
+      - ../scraperService/.env
+    environment:
+      HF_TIMEOUT_SECONDS: ${HF_TIMEOUT_SECONDS:-20}
+      CLASSIFY_BUDGET_SECONDS: ${CLASSIFY_BUDGET_SECONDS:-45}
+    networks:
+      - collegebuddy_network
+
 
 volumes:
   pgdata:

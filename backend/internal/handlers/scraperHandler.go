@@ -9,6 +9,8 @@ import (
 	"somaiya-ext/service"
 	"strings"
 	"time"
+
+	"google.golang.org/api/gmail/v1"
 )
 
 type ParsedMessage struct {
@@ -18,6 +20,40 @@ type ParsedMessage struct {
 	From     string `json:"from"`
 	To       string `json:"to"`
 	Date     string `json:"date"`
+}
+
+func extractAttachmentsFromPayload(payload *gmail.MessagePart) []models.Attatchment {
+	if payload == nil {
+		return []models.Attatchment{}
+	}
+
+	attachments := make([]models.Attatchment, 0)
+	seenAttachmentIDs := make(map[string]struct{})
+
+	var walkParts func(part *gmail.MessagePart)
+	walkParts = func(part *gmail.MessagePart) {
+		if part == nil {
+			return
+		}
+
+		if part.Body != nil && part.Body.AttachmentId != "" {
+			if _, exists := seenAttachmentIDs[part.Body.AttachmentId]; !exists {
+				attachments = append(attachments, models.Attatchment{
+					Filename:      part.Filename,
+					MimeType:      part.MimeType,
+					AttatchmentId: part.Body.AttachmentId,
+				})
+				seenAttachmentIDs[part.Body.AttachmentId] = struct{}{}
+			}
+		}
+
+		for _, child := range part.Parts {
+			walkParts(child)
+		}
+	}
+
+	walkParts(payload)
+	return attachments
 }
 
 func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
@@ -161,8 +197,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for i := range messages.Messages {
-			log.Printf("Fetching  metadata of message ID: %s\n", messages.Messages[i].Id)
-			msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("metadata").MetadataHeaders("From", "To", "Subject", "Date").Do()
+			msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("full").Do()
 
 			if err != nil {
 				log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
@@ -170,16 +205,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 			}
 
 			log.Println("Looking for attatchments in: ", msg.Id)
-			var allAttatchments []models.Attatchment
-			for _, part := range msg.Payload.Parts {
-				if part.Filename != "" && part.Body != nil && part.Body.AttachmentId != "" {
-					allAttatchments = append(allAttatchments, models.Attatchment{
-						Filename:      part.Filename,
-						MimeType:      part.MimeType,
-						AttatchmentId: part.Body.AttachmentId,
-					})
-				}
-			}
+			allAttatchments := extractAttachmentsFromPayload(msg.Payload)
 
 			svvEmail := ""
 			if email, ok := studentData["email"].(string); ok && email != "" {
@@ -190,6 +216,7 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 				ID:           msg.Id,
 				ThreadID:     msg.ThreadId,
 				Student:      svvEmail,
+				Snippet:      msg.Snippet,
 				Attatchments: allAttatchments,
 			}
 
@@ -221,7 +248,6 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		if len(parsedMessages) < sampleCount {
 			sampleCount = len(parsedMessages)
 		}
-		log.Printf("Parsed %d messages, first %d: %+v\n", len(parsedMessages), sampleCount, parsedMessages[0:sampleCount])
 	}
 	// filtering mails
 	log.Println("Filtering mails to be sent to extension")
@@ -351,6 +377,8 @@ func (h *Handler) HandleGetGmailMessage(w http.ResponseWriter, r *http.Request) 
 			msgData.Date = h.Value
 		}
 	}
+
+	msgData.Attatchments = extractAttachmentsFromPayload(msg.Payload)
 
 	// Extract body
 	if msg.Payload.Body != nil && msg.Payload.Body.Data != "" {

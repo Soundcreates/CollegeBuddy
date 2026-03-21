@@ -1,4 +1,3 @@
-import 'package:mobile/models/userModel.dart';
 import 'package:mobile/models/mailModel.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -17,7 +16,7 @@ class MailApi extends ChangeNotifier {
       final accessToken = await storage.read(key: "access_token");
       if (accessToken == null || accessToken.isEmpty) {
         print("Access token not found or empty");
-        return [];
+        return null;
       }
       print("Access token successfully extracted");
       final finalUrl = Uri.parse(url);
@@ -38,11 +37,11 @@ class MailApi extends ChangeNotifier {
         return mailResults.cast<MailModel>();
       } else {
         print("Failed to fetch mails: ${response.statusCode}");
-        return [];
+        return null;
       }
     } catch (e) {
       print("Error fetching mails: $e");
-      return [];
+      return null;
     }
   }
 }

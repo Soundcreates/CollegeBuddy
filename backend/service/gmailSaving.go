@@ -1,13 +1,16 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"somaiya-ext/internal/models"
 	"strings"
+	"time"
 )
 
 func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, error) {
@@ -15,29 +18,17 @@ func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, 
 
 	filteredMessages := []models.GmailMessage{} // Initialize as empty slice
 	for _, msg := range messages {
-		fmt.Printf("Trying to filter mail that was sent from : %s \n", strings.ToLower(msg.From))
 
 		flag := false
 		lowerSender := strings.ToLower(msg.From)
-		facultyMails := GetFacultyMails()
-		if len(*facultyMails) == 0 {
-			fmt.Println("Faculty mails list is empty")
-		}
-		fmt.Println("Checking against faculty mails now: ")
-		for _, mail := range *facultyMails {
-			if strings.Contains(lowerSender, mail) {
-				fmt.Println("Matched faculty mail: ", mail)
-				flag = true
-				break
-			}
+		if strings.Contains(lowerSender, "somaiya.edu") {
+			flag = true
 		}
 
 		if flag == true { //i know that just saying flag checks if its true or false, but just for safety
-			fmt.Printf("Mail: %s, is going to be returned\n", msg.ID)
 			filteredMessages = append(filteredMessages, msg)
-		} else {
-			fmt.Printf("Mail: %s, is being discarded \n", msg.ID)
 		}
+
 	}
 
 	return filteredMessages, nil
@@ -45,8 +36,11 @@ func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, 
 }
 
 func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
-	log.Println("Reached text filtering station")
-	url := "https://collegebuddy-python.onrender.com"
+	url := strings.TrimSpace(os.Getenv("PYTHON_AI_SERVICE_URL"))
+	if url == "" {
+		url = "http://127.0.0.1:8000/text-classification"
+	}
+	log.Printf("Starting to contact the ai: %s", url)
 
 	// Collect email bodies (or snippets) into a slice
 	var texts []string
@@ -58,9 +52,17 @@ func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
 		}
 	}
 
+	if len(texts) == 0 {
+		log.Println("Skipping AI call: no message body/snippet available to classify")
+		return []models.GmailMessage{}, nil
+	}
+
 	// Prepare JSON payload
-	jsonPayload := fmt.Sprintf(`{"text":%s}`, marshalStringSlice(texts))
-	payload := strings.NewReader(jsonPayload)
+	jsonPayload, err := json.Marshal(map[string][]string{"text": texts})
+	if err != nil {
+		return nil, err
+	}
+	payload := bytes.NewReader(jsonPayload)
 
 	req, err := http.NewRequest("POST", url, payload)
 	if err != nil {
@@ -68,7 +70,7 @@ func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -79,6 +81,11 @@ func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("python service returned status %d: %s", resp.StatusCode, string(body))
+	}
+	log.Printf("AI service response status=%d body=%s", resp.StatusCode, string(body))
 
 	// Parse response
 	type FilteredItem struct {
@@ -110,18 +117,4 @@ func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
 	}
 
 	return filteredMessages, nil
-}
-
-// Helper to marshal []string to JSON array
-func marshalStringSlice(slice []string) string {
-	var b strings.Builder
-	b.WriteString("[")
-	for i, s := range slice {
-		b.WriteString(fmt.Sprintf("%q", s))
-		if i < len(slice)-1 {
-			b.WriteString(",")
-		}
-	}
-	b.WriteString("]")
-	return b.String()
 }

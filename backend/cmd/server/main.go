@@ -29,7 +29,7 @@ func main() {
 	mux := routes.RegisterRoutes(handler)
 	extension_id := cfg.EXTENSION_ID
 	allowedOrigins := []string{
-		"http://localhost:5173",                               // Vite dev server
+		"http://localhost:5173",              // Vite dev server
 		"chrome-extension://" + extension_id, // Your Chrome extension
 	}
 	if os.Getenv("ALLOWED_ORIGIN") != "" {
@@ -51,7 +51,6 @@ func main() {
 		},
 		AllowCredentials: true,
 	})
-
 	handler2 := c.Handler(mux)
 	var port string
 	if cfg.PORT != "" {

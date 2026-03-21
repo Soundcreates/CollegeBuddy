@@ -101,7 +101,7 @@ class DashboardScreen extends StatelessWidget {
                         ],
                       ),
                       CircleAvatar(
-                        radius: 24,
+                        radius: 22,
                         backgroundImage: user?.profilePic != null && user!.profilePic.isNotEmpty
                           ? NetworkImage(user!.profilePic)
                           : null,

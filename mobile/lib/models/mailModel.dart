@@ -20,6 +20,8 @@ class MailModel {
   });
 
   factory MailModel.fromJson(Map<String, dynamic> json) {
+    final attachmentsJson = (json["attachments"] ?? json["attatchments"]) as List?;
+
     return MailModel(
       id: json["id"] ?? '',
       subject: json["subject"] ?? '',
@@ -28,7 +30,10 @@ class MailModel {
       date: json["date"] ?? '',
       snippet: json["snippet"] ?? '',
       body: json["body"] ?? '',
-      attachments: (json["attachments"] as List?)?.map((e) => AttachmentModel.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      attachments: attachmentsJson
+              ?.map((e) => AttachmentModel.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList() ??
+          [],
     );
   }
 }
@@ -46,9 +51,9 @@ class AttachmentModel {
 
   factory AttachmentModel.fromJson(Map<String, dynamic> json) {
     return AttachmentModel(
-      filename: json["filename"] ?? '',
-      mimeType: json["mimeType"] ?? '',
-      attachmentId: json["attachmentId"] ?? '',
+      filename: json["filename"] ?? json["fileName"] ?? '',
+      mimeType: json["mimeType"] ?? json["mimetype"] ?? '',
+      attachmentId: json["attachmentId"] ?? json["attatchment_id"] ?? json["attachment_id"] ?? '',
     );
   }
 }

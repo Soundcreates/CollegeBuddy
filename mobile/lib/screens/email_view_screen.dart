@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import "package:mobile/models/mailModel.dart";
 class EmailViewScreen extends StatelessWidget {
   final MailModel email;
@@ -90,7 +89,7 @@ class EmailViewScreen extends StatelessWidget {
             ),
 
             // Attachments
-            if ((email.attachments ?? []).isNotEmpty) ...[
+            if (email.attachments.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
                 'Attachments',
@@ -123,7 +122,7 @@ class EmailViewScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          att.toString(),
+                          att.filename.isNotEmpty ? att.filename : 'Unnamed attachment',
                           style: GoogleFonts.outfit(
                             color: Colors.blue.shade100,
                           ),

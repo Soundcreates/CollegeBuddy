@@ -2,6 +2,7 @@ import "package:mobile/api/mailApi.dart";
 import "package:mobile/models/mailModel.dart";
 import "package:mobile/api/authApi.dart";
 import "package:mobile/models/userModel.dart";
+import "package:mobile/services/widget_service.dart";
 
 class BigDataRepository{
   static final BigDataRepository _instance = BigDataRepository._internal();
@@ -21,10 +22,15 @@ class BigDataRepository{
         print("Returning cached data");
           return _mailCache;
         } else {
-          // Simulate data fetching
           final List<MailModel>?  response = await _mailFetcher.fetchUserMails();
-          _mailCache = response;  
-          _lastFetchTime = DateTime.now();
+
+          // Do not poison cache when fetch fails (e.g. missing/expired token).
+          if (response != null) {
+            _mailCache = response;
+            _lastFetchTime = DateTime.now();
+            await WidgetService.updateEmails(response);
+          }
+
           return _mailCache;
         }
     }
