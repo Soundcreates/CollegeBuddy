@@ -34,8 +34,7 @@ class AuthApi extends ChangeNotifier {
     });
   }
 
-  final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev/api";
-  final String prodUrl = "https://collegebuddy-service.onrender.com/api";
+  final String baseUrl = "https://collegebuddy-service.onrender.com";
   Future<void> startGoogleOauth() async {
     // Encode device info in the state parameter
     print("Starting google auth");
@@ -64,7 +63,7 @@ class AuthApi extends ChangeNotifier {
     }
     print("[DEBUG] JWT token being sent to backend: $userToken");
     try {
-      final url = Uri.parse("https://kisha-volcanologic-motherly.ngrok-free.dev/api/auth/get-profile?token=$userToken");
+      final url = Uri.parse("$baseUrl/auth/get-profile?token=$userToken");
       print("[DEBUG] Profile fetch URL: $url");
       final response = await http.get(url);
       print("[DEBUG] Backend response status: ${response.statusCode}");

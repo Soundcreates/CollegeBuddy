@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 
 class MailApi extends ChangeNotifier {
-  final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev/api";
+  final String baseUrl = "https://collegebuddy-service.onrender.com";
   final FlutterSecureStorage storage = FlutterSecureStorage();
 
  Future<List<MailModel>?> fetchUserMails() async {
