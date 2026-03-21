@@ -58,12 +58,10 @@ class WidgetListFactory(private val context: Context) : RemoteViewsService.Remot
         val mail = mails[position]
         val isCompleted = mail.optBoolean("isCompleted", false)
         val subject = mail.optString("subject", "Untitled")
-        val date = mail.optString("date", "")
 
         // Compact subject
         val compactSubject = subject.replace("\n", " ").replace(Regex("\\s+"), " ").trim().take(48)
         views.setTextViewText(R.id.item_subject, compactSubject)
-        views.setTextViewText(R.id.item_date, date)
 
         // Apply styling based on completion state
         if (isCompleted) {
@@ -72,14 +70,12 @@ class WidgetListFactory(private val context: Context) : RemoteViewsService.Remot
             views.setTextColor(R.id.item_check, Color.parseColor("#121212"))
             views.setInt(R.id.item_check, "setBackgroundResource", R.drawable.widget_checkbox_checked)
             views.setInt(R.id.item_subject, "setPaintFlags", Paint.ANTI_ALIAS_FLAG or Paint.STRIKE_THRU_TEXT_FLAG)
-            views.setTextColor(R.id.item_date, completedOrange)
         } else {
             views.setTextColor(R.id.item_subject, pendingPrimary)
             views.setTextViewText(R.id.item_check, "")
             views.setTextColor(R.id.item_check, Color.parseColor("#121212"))
             views.setInt(R.id.item_check, "setBackgroundResource", R.drawable.widget_checkbox_unchecked)
             views.setInt(R.id.item_subject, "setPaintFlags", Paint.ANTI_ALIAS_FLAG)
-            views.setTextColor(R.id.item_date, resolveDateColor(date))
         }
 
         // Set click intent for toggle
@@ -92,15 +88,6 @@ class WidgetListFactory(private val context: Context) : RemoteViewsService.Remot
         views.setOnClickFillInIntent(R.id.item_row, intent)
 
         return views
-    }
-
-    private fun resolveDateColor(date: String): Int {
-        val d = date.lowercase()
-        return when {
-            d.contains("today") || d.contains("hour") || d.contains("hr") || d.contains("min") -> soonAmber
-            d.contains("day") || d.contains("week") -> neutralDate
-            else -> neutralDate
-        }
     }
 
     override fun getLoadingView(): RemoteViews? = null
