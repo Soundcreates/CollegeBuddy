@@ -14,7 +14,13 @@
         android:name="android.appwidget.provider"
         android:resource="@xml/widget_info"/>
 </receiver>
-<meta-data
+
+        <service
+            android:name=".WidgetListService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS"/>
+
+        <meta-data
     android:name="com.example.mobile.FLUTTER_ENTRYPOINT_META_DATA_KEY"
     android:value="homeWidgetProvider" />
        <activity

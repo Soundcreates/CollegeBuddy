@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="8dp"
+    android:background="#121212">
+
+    <TextView
+        android:id="@+id/item_check"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginEnd="8dp"
+        android:gravity="center"
+        android:text=""
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:textColor="#121212"
+        android:background="@drawable/widget_checkbox_unchecked"/>
+
+    <TextView
+        android:id="@+id/item_subject"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Subject"
+        android:textColor="#ffffff"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:ellipsize="end"/>
+
+    <TextView
+        android:id="@+id/item_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="1d"
+        android:textColor="#8fa3ad"
+        android:textSize="11sp"
+        android:maxLines="1"/>
+
+</LinearLayout>
