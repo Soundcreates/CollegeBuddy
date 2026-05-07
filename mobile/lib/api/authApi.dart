@@ -34,17 +34,24 @@ class AuthApi extends ChangeNotifier {
     });
   }
 
-  final String baseUrl = "https://collegebuddy-service.onrender.com";
+  // Local/public testing via ngrok
+  final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev";
   Future<void> startGoogleOauth() async {
     // Encode device info in the state parameter
     print("Starting google auth");
     final state = "kjssecodecell";
-    final url = Uri.parse("$baseUrl/auth/OAuth?state=$state");
+    final url = Uri.parse("$baseUrl/api/auth/OAuth?state=$state");
     try {
       isLoading = true;
       final response = await http.get(url);
+      print("[DEBUG] OAuth response status: ${response.statusCode}");
+      print("[DEBUG] OAuth response body: ${response.body}");
       final data = json.decode(response.body);
       final authUrl = data['oauth_url'];
+      print("[DEBUG] OAuth URL from backend: $authUrl");
+      if (authUrl == null || authUrl.isEmpty) {
+        throw Exception("Invalid OAuth URL received from backend");
+      }
       await launchUrl(Uri.parse(authUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
       print("Error launching URL: $e");
@@ -63,7 +70,7 @@ class AuthApi extends ChangeNotifier {
     }
     print("[DEBUG] JWT token being sent to backend: $userToken");
     try {
-      final url = Uri.parse("$baseUrl/auth/get-profile?token=$userToken");
+      final url = Uri.parse("$baseUrl/api/auth/get-profile?token=$userToken");
       print("[DEBUG] Profile fetch URL: $url");
       final response = await http.get(url);
       print("[DEBUG] Backend response status: ${response.statusCode}");

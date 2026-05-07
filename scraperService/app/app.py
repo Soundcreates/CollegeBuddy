@@ -1,16 +1,21 @@
 from typing import Any
 from fastapi import FastAPI, HTTPException
-from app.schemas import TextClassificationRequest
+from app.schemas import (
+    TextClassificationRequest,
+    BatchEmailFilterRequest,
+    BatchEmailFilterResponse,
+)
 from app.model import classify_and_filter_emails 
-from dotenv import load_dotenv
+from app.email_filter_service import EmailFilterService
 from app.inference import TARGET_CATEGORIES
+from dotenv import load_dotenv
 import logging
 
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+app = FastAPI(title="CollegeBuddy Email Filter", version="1.0.0")
 logger = logging.getLogger(__name__)
 
 @app.post("/text-classification")
@@ -23,10 +28,65 @@ async def classify_text(request: TextClassificationRequest):
 
         return {"filtered": filtered_mails}
 
-
     except Exception as e: 
-            logger.exception("Error during classification")
-            raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error during classification")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/filter-emails", response_model=BatchEmailFilterResponse)
+async def filter_emails_batch(request: BatchEmailFilterRequest) -> BatchEmailFilterResponse:
+    """
+    Filter a batch of emails for a specific day using AI classification.
+    
+    Returns organized filtered emails by category for mobile display.
+    
+    Args:
+        request: BatchEmailFilterRequest with list of emails and optional date
+        
+    Returns:
+        BatchEmailFilterResponse with emails organized by category
+    """
+    logger.info(
+        "Received email filter request for %d emails (date: %s)",
+        len(request.emails),
+        request.date
+    )
+    
+    try:
+        if not request.emails:
+            logger.warning("Empty email list received")
+            return BatchEmailFilterResponse(
+                success=True,
+                date=request.date,
+                total_emails=0,
+                filtered_count=0,
+                by_category={},
+                all_filtered=[]
+            )
+        
+        # Use the email filter service for batch processing
+        result = EmailFilterService.filter_emails_batch(request.emails)
+        result.date = request.date
+        
+        logger.info(
+            "Email filtering completed: %d/%d emails retained",
+            result.filtered_count,
+            result.total_emails
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.exception("Error during email filtering")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error filtering emails: {str(e)}"
+        )
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
     
 
 

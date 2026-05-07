@@ -14,35 +14,33 @@ class BigDataRepository{
   UserModel? _userCache;
 
   Future<dynamic> fetchMailData() async {
-      if(
-        _mailCache != null &&
-        _lastFetchTime != null &&
-        DateTime.now().difference(_lastFetchTime!) < const Duration(hours: 5)
-        ){
-        print("Returning cached data");
-          return _mailCache;
-        } else {
-          final List<MailModel>?  response = await _mailFetcher.fetchUserMails();
+      print("[MAIL FETCH] fetchMailData called");
+      // Caching disabled for AI filtration debugging
+      print("[MAIL FETCH] Fetching fresh mail data from backend (caching disabled)...");
+      final List<MailModel>?  response = await _mailFetcher.fetchUserMails();
 
-          // Do not poison cache when fetch fails (e.g. missing/expired token).
-          if (response != null) {
-            _mailCache = response;
-            _lastFetchTime = DateTime.now();
-            await WidgetService.updateEmails(response);
-          }
+      if (response != null) {
+        print("[MAIL FETCH] Successfully fetched ${response.length} emails");
+        _mailCache = response;
+        _lastFetchTime = DateTime.now();
+        await WidgetService.updateEmails(response);
+      } else {
+        print("[MAIL FETCH] Failed to fetch emails from backend");
+      }
 
-          return _mailCache;
-        }
+      return _mailCache;
     }
 
   Future<UserModel?> fetchUserData() async {
+    print("[PROFILE] fetchUserData called");
     if(_userCache != null){
-      print("Returning cached user data");
+      print("[PROFILE] Returning cached user data");
       return _userCache;
     } else {
-      // Simulate user data fetching
+      print("[PROFILE] Fetching user profile from backend");
       final userData = await AuthApi().currentUser;
       _userCache = userData;
+      print("[PROFILE] User profile fetch complete: ${_userCache != null}");
       return _userCache;   
     }
   }
@@ -51,5 +49,11 @@ class BigDataRepository{
     await AuthApi().Logout();
     _userCache = null;
     _mailCache = null;
+  }
+
+  void clearMailCache() {
+    print("[CACHE] Clearing mail cache");
+    _mailCache = null;
+    _lastFetchTime = null;
   }
  }

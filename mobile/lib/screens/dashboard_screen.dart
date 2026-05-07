@@ -1,35 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile/api/authApi.dart';
-import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:mobile/api/mailApi.dart';
 import 'email_view_screen.dart';
 import "package:mobile/models/userModel.dart";
-import "package:mobile/api/mailApi.dart";
 import "package:mobile/models/mailModel.dart";
 import "package:mobile/cache/BigDataRepository.dart";
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  late Future<List<dynamic>> _loadedData;
+  bool _hasInitialized = false;
+  final BigDataRepository mailRepo = BigDataRepository();
+  final MailApi mail_fetcher = MailApi();
+  bool _isRefreshing = false;
+  List<MailModel> _streamedMails = [];
+  bool _streamLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    print("[DASHBOARD] initState called, preparing initial data load");
+    _initializeOnce();
+  }
+
+  Future<void> _testFetchMails() async {
+    setState(() => _isRefreshing = true);
+    try {
+      print("[TEST] Manual mail fetch triggered");
+      mailRepo.clearMailCache();
+      setState(() {
+        _streamLoading = true;
+        _streamedMails = [];
+      });
+
+      await for (final mails in mail_fetcher.streamFilteredMails(minBatchToEmit: 5)) {
+        if (!mounted) break;
+        setState(() {
+          _streamedMails = mails;
+        });
+      }
+
+      if (mounted) {
+        setState(() => _streamLoading = false);
+      }
+
+      print("[TEST] Stream fetch completed: ${_streamedMails.length} mails");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fetched ${_streamedMails.length} mails'), duration: const Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      print("[TEST] Manual fetch error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), duration: const Duration(seconds: 2)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
+  }
+
+  void _initializeOnce() {
+    if (!_hasInitialized) {
+      _loadedData = _loadDashboardData();
+      _hasInitialized = true;
+    }
+  }
+
+  Future<List<dynamic>> _loadDashboardData() async {
+    print("[DASHBOARD] Loading dashboard data");
+    final user = await mailRepo.fetchUserData();
+    final mails = await mailRepo.fetchMailData() as List<MailModel>? ?? [];
+    print("[DASHBOARD] Dashboard data loaded: user=${user != null}, mails=${mails.length}");
+    return [user, mails];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final authService = context.watch<AuthApi>();
-    final BigDataRepository mailRepo = BigDataRepository();
-
-    Future<List<dynamic>> _loadDashboardData() async {
-        final user = await mailRepo.fetchUserData() as UserModel? ?? null;
-        final mails = await mailRepo.fetchMailData() as List<MailModel>? ?? [];
-
-        return [user,mails];
-      }
       // Mock Mail Data
     // Removed mock emails. Will use fetched mails from backend.
 
     return FutureBuilder(
-      future: _loadDashboardData(),
+      future: _loadedData,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -52,7 +114,8 @@ class DashboardScreen extends StatelessWidget {
           return const Center(child: Text("Failed to load data"));
         }
         final user = snapshot.data![0] as UserModel? ?? null;
-        final mails = snapshot.data![1] as List<MailModel>? ?? [];
+        final cachedMails = snapshot.data![1] as List<MailModel>? ?? [];
+        final mails = _streamedMails.isNotEmpty ? _streamedMails : cachedMails;
         if(user == null){
           WidgetsBinding.instance.addPostFrameCallback((_) {
               Future.delayed(const Duration(seconds: 2), () {
@@ -83,7 +146,7 @@ class DashboardScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello, ${user?.name.split(' ')[0] ?? 'Student'}',
+                            'Hello, ${user.name.split(' ')[0]}',
                             style: GoogleFonts.outfit(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -102,11 +165,11 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       CircleAvatar(
                         radius: 22,
-                        backgroundImage: user?.profilePic != null && user!.profilePic.isNotEmpty
-                          ? NetworkImage(user!.profilePic)
+                        backgroundImage: user.profilePic.isNotEmpty
+                          ? NetworkImage(user.profilePic)
                           : null,
                         backgroundColor: Colors.grey.shade800,
-                        child: user?.profilePic == null || user!.profilePic.isEmpty
+                        child: user.profilePic.isEmpty
                           ? const Icon(Icons.person, color: Colors.white)
                           : null,
                       ),
@@ -152,7 +215,35 @@ class DashboardScreen extends StatelessWidget {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 36,
+                            child: ElevatedButton(
+                              onPressed: _isRefreshing ? null : _testFetchMails,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                disabledBackgroundColor: Colors.blue.withOpacity(0.5),
+                              ),
+                              child: _isRefreshing
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                                    )
+                                  : const Text('Test Fetch Mails', style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
                           const SizedBox(height: 20),
+                          if (_streamLoading) ...[
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                "Loading...",
+                                style: TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           Expanded(
                             child: mails.isEmpty
                                 ? Center(
