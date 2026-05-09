@@ -20,8 +20,9 @@ type Config struct {
 	JWT_SECRET          string
 	EXTENSION_ID        string
 	DATABASE_URL        string
-	BACKEND_URL 	  string
-	MODE string
+	BACKEND_URL         string
+	MODE                string
+	GMAIL_SCRAPE_CRON   string
 }
 
 func LoadConfig() *Config {
@@ -30,8 +31,6 @@ func LoadConfig() *Config {
 	if err != nil {
 		log.Println("No .env file found, using system environment variables")
 	}
-
-
 
 	// dbPort := 5432
 	// if db_port != "" {
@@ -53,8 +52,9 @@ func LoadConfig() *Config {
 		JWT_SECRET:          os.Getenv("JWT_SECRET"),
 		EXTENSION_ID:        os.Getenv("EXTENSION_ID"),
 		DATABASE_URL:        os.Getenv("DATABASE_URL"),
-		BACKEND_URL:   os.Getenv("BACKEND_URL"),
-		MODE: os.Getenv("MODE"),
+		BACKEND_URL:         os.Getenv("BACKEND_URL"),
+		MODE:                os.Getenv("MODE"),
+		GMAIL_SCRAPE_CRON:   os.Getenv("GMAIL_SCRAPE_CRON"),
 	}
 
 	return cfg

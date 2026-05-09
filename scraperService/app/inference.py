@@ -1,5 +1,5 @@
 
-# Define your target categories here
+# Define your target categories here (expanded for better coverage)
 TARGET_CATEGORIES = [
     "online class",
     "exam",
@@ -14,9 +14,14 @@ TARGET_CATEGORIES = [
     "seminar",
     "workshop",
     "holiday notice",
-    "administrative notice"
+    "administrative notice",
+    "study material",
+    "study resources",
+    "academic",
+    "course information",
+    "student notice",
 ]
 
-# Confidence threshold for filtering
-CONFIDENCE_THRESHOLD = 0.5
+# Confidence threshold for filtering (lowered for less strict filtering)
+CONFIDENCE_THRESHOLD = 0.35
 

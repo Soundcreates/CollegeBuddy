@@ -69,6 +69,9 @@ var Faculty_mails = []string{
 	"yogitaborse@somaiya.edu",
 	"zaheedshaikh@somaiya.edu",
 	"surenpatwardhan@somaiya.edu",
+	"no-reply@classroom.google.com",
+	"swatimali@somaiya.edu",
+	"surenpatwardhan@somaiya.edu",
 }
 
 func GetFacultyMails() *[]string {

@@ -5,6 +5,4 @@ fastapi
 pydantic
 python-dotenv
 uvicorn
-transformers
-huggingface_hub
 sentence-transformers

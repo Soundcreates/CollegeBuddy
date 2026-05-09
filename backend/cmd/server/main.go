@@ -21,9 +21,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	db.AutoMigrate(&models.Student{}, &models.GmailMessage{})
 	log.Println("Database migrated successfully")
 	handler := handler.NewHandler(db, cfg)
+	gmailCron, err := handler.StartGmailScrapeCron()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer gmailCron.Stop()
 
 	//this is the main Router
 	mux := routes.RegisterRoutes(handler)

@@ -2,3 +2,8 @@
 .github/
 .idea
 .github
+*/*.md
+*.md
+*.sh
+*/*.sh
+.codex

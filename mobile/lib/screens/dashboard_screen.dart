@@ -78,8 +78,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<List<dynamic>> _loadDashboardData() async {
-    print("[DASHBOARD] Loading dashboard data");
+    print("[DASHBOARD] Loading dashboard data (FRESH, NO CACHE)");
     final user = await mailRepo.fetchUserData();
+    // IMPORTANT: Force fresh fetch every time (no cache)
     final mails = await mailRepo.fetchMailData() as List<MailModel>? ?? [];
     print("[DASHBOARD] Dashboard data loaded: user=${user != null}, mails=${mails.length}");
     return [user, mails];

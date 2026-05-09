@@ -7,6 +7,7 @@ toolchain go1.24.11
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/joho/godotenv v1.5.1
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.11.1
 	golang.org/x/oauth2 v0.18.0
 	google.golang.org/api v0.173.0

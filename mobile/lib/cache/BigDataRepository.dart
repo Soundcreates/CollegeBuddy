@@ -15,20 +15,24 @@ class BigDataRepository{
 
   Future<dynamic> fetchMailData() async {
       print("[MAIL FETCH] fetchMailData called");
-      // Caching disabled for AI filtration debugging
-      print("[MAIL FETCH] Fetching fresh mail data from backend (caching disabled)...");
+      // CACHE COMPLETELY DISABLED - Always fetch fresh data
+      print("[MAIL FETCH] Fetching FRESH mail data from backend (NO caching)...");
+      _mailCache = null;  // Clear cache before fetch
       final List<MailModel>?  response = await _mailFetcher.fetchUserMails();
 
       if (response != null) {
-        print("[MAIL FETCH] Successfully fetched ${response.length} emails");
+        print("[MAIL FETCH] Successfully fetched ${response.length} emails from backend");
         _mailCache = response;
         _lastFetchTime = DateTime.now();
+        // Always update widget with fresh data
         await WidgetService.updateEmails(response);
+        print("[MAIL FETCH] Widget updated with ${response.length} emails");
       } else {
         print("[MAIL FETCH] Failed to fetch emails from backend");
+        _mailCache = null;
       }
 
-      return _mailCache;
+      return _mailCache ?? [];
     }
 
   Future<UserModel?> fetchUserData() async {

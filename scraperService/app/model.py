@@ -1,67 +1,74 @@
-import requests
 import os
 import time
 import logging
 from typing import TypedDict, cast
-
-
-hf_token = os.getenv("HUGGING_TOKEN")
-API_URL="https://router.huggingface.co/hf-inference/models/valhalla/distilbart-mnli-12-1"
-HF_TIMEOUT_SECONDS = float(os.getenv("HF_TIMEOUT_SECONDS", "20"))
-CLASSIFY_BUDGET_SECONDS = float(os.getenv("CLASSIFY_BUDGET_SECONDS", "45"))
+from sentence_transformers import SentenceTransformer, util
 
 logger = logging.getLogger(__name__)
 
-class ZeroShotResponse(TypedDict):
+CLASSIFY_BUDGET_SECONDS = float(os.getenv("CLASSIFY_BUDGET_SECONDS", "45"))
+MODEL_NAME = "all-MiniLM-L6-v2"
+
+# Global model instance (cached after first load)
+_model_instance = None
+
+class SimilarityResponse(TypedDict):
     sequence: str
     labels: list[str]
     scores: list[float]
 
-def zero_shot_classify(sequence : str, labels : list[str], read_timeout_seconds: float) -> ZeroShotResponse:
-    if not hf_token:
-        raise RuntimeError("HUGGING_TOKEN is not set")
+def get_model():
+    """Get or initialize the sentence transformer model"""
+    global _model_instance
+    if _model_instance is None:
+        logger.info(f"Loading sentence transformer model: {MODEL_NAME}")
+        _model_instance = SentenceTransformer(MODEL_NAME)
+        # Move to CPU for better compatibility
+        _model_instance.to("cpu")
+        logger.info("Model loaded successfully")
+    return _model_instance
 
-    headers = {"Authorization": f"Bearer {hf_token}"}
-    payload = {
-        "inputs": sequence,
-        "parameters": {"candidate_labels": labels}
+def semantic_classify(sequence: str, labels: list[str]) -> SimilarityResponse:
+    """
+    Classify text using semantic similarity with sentence transformers.
+    
+    Args:
+        sequence: Email text to classify (subject + body)
+        labels: List of category labels to compare against
+        
+    Returns:
+        SimilarityResponse with ranked labels and similarity scores
+    """
+    if not sequence or not labels:
+        raise ValueError("sequence and labels must not be empty")
+    
+    model = get_model()
+    
+    # Encode email and labels
+    email_embedding = model.encode(sequence, convert_to_tensor=True)
+    label_embeddings = model.encode(labels, convert_to_tensor=True)
+    
+    # Calculate cosine similarities
+    similarities = util.pytorch_cos_sim(email_embedding, label_embeddings)[0]
+    
+    # Convert to list and sort by similarity (highest first)
+    scores_list = similarities.cpu().numpy().tolist()
+    sorted_pairs = sorted(enumerate(scores_list), key=lambda x: x[1], reverse=True)
+    
+    # Extract sorted labels and scores
+    sorted_indices = [i for i, _ in sorted_pairs]
+    sorted_labels = [labels[i] for i in sorted_indices]
+    sorted_scores = [score for _, score in sorted_pairs]
+    
+    return {
+        "sequence": sequence,
+        "labels": sorted_labels,
+        "scores": sorted_scores,
     }
-    response = requests.post(
-        API_URL,
-        headers=headers,
-        json=payload,
-        timeout=(5, read_timeout_seconds),
-    )
-    if response.status_code != 200:
-        raise RuntimeError(f"HuggingFace API error {response.status_code}: {response.text}")
 
-    data  = response.json()
-    if isinstance(data, dict):
-        if "labels" not in data or "scores" not in data:
-            raise RuntimeError(f"Unexpected HuggingFace response: {data}")
-        return cast(ZeroShotResponse, data)
-
-    if isinstance(data, list) and all(isinstance(item, dict) for item in data):
-        parsed_labels: list[str] = []
-        parsed_scores: list[float] = []
-        for item in data:
-            label = item.get("label")
-            score = item.get("score")
-            if not isinstance(label, str) or not isinstance(score, (int, float)):
-                raise RuntimeError(f"Unexpected HuggingFace response item: {item}")
-            parsed_labels.append(label)
-            parsed_scores.append(float(score))
-        return {
-            "sequence": sequence,
-            "labels": parsed_labels,
-            "scores": parsed_scores,
-        }
-
-    raise RuntimeError(f"Unexpected HuggingFace response: {data}")
-
-
-def classify_and_filter_emails(emails,TARGET_CATEGORIES):
-    logger.info("Classifying %d emails", len(emails))
+def classify_and_filter_emails(emails, TARGET_CATEGORIES):
+    """Legacy function for backward compatibility"""
+    logger.info("Classifying %d emails with sentence transformers", len(emails))
     filtered = []
     started_at = time.monotonic()
 
@@ -71,19 +78,10 @@ def classify_and_filter_emails(emails,TARGET_CATEGORIES):
             logger.warning("Classification budget reached after %.2fs; returning partial results", elapsed)
             break
 
-        remaining_budget = CLASSIFY_BUDGET_SECONDS - elapsed
-        per_call_timeout = min(HF_TIMEOUT_SECONDS, max(5.0, remaining_budget))
-
         try:
-            result = zero_shot_classify(email, TARGET_CATEGORIES, per_call_timeout)
-        except requests.exceptions.Timeout:
-            logger.warning("Timed out while classifying one email; skipping")
-            continue
-        except requests.exceptions.RequestException as e:
-            logger.warning("Network error while classifying one email: %s", e)
-            continue
-        except RuntimeError as e:
-            logger.warning("Classifier runtime error for one email: %s", e)
+            result = semantic_classify(email, TARGET_CATEGORIES)
+        except Exception as e:
+            logger.warning("Classifier error for one email: %s", e)
             continue
         
         if not result["labels"] or not result["scores"]:

@@ -45,15 +45,37 @@ class _HomeWidgetProviderState extends State<HomeWidgetProvider> {
 
   Future<void> _loadMails() async {
     try {
+      print("[WIDGET PROVIDER] Loading mails from widget storage (FRESH READ)");
       final data =
-          await HomeWidget.getWidgetData<List<dynamic>>('emails') ?? [];
-      setState(() {
-        mails = data
-            .map((e) => WidgetMailModel.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-      });
+          await HomeWidget.getWidgetData<String>('emails_json') ?? '';
+      
+      if (data.isEmpty) {
+        print("[WIDGET PROVIDER] No emails in storage, showing empty state");
+        setState(() {
+          mails = [];
+        });
+        return;
+      }
+
+      try {
+        final decoded = jsonDecode(data) as List<dynamic>;
+        setState(() {
+          mails = decoded
+              .map((e) => WidgetMailModel.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+        });
+        print("[WIDGET PROVIDER] Loaded ${mails.length} mails from widget storage");
+      } catch (e) {
+        print("[WIDGET PROVIDER] Error decoding widget data: $e");
+        setState(() {
+          mails = [];
+        });
+      }
     } catch (e) {
       print('Error loading mails: $e');
+      setState(() {
+        mails = [];
+      });
     }
   }
 

@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"somaiya-ext/internal/models"
@@ -169,224 +168,14 @@ func (h *Handler) HandleScrapeGmail(w http.ResponseWriter, r *http.Request) {
 		refreshToken = ""
 	}
 
-	// Initialize Gmail service
-	log.Println("Initializing Gmail service")
-	gmailService := service.NewGmailService(h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET)
-
-	// Create Gmail client with stored tokens
-	log.Println("Creating Gmail client")
-	gmailClient, err := gmailService.GmailClientFromStoredToken(r.Context(), h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET, accessToken, refreshToken, email, h.DB)
+	response, err := h.scrapeAndFilterGmail(r.Context(), email, accessToken, refreshToken)
 	if err != nil {
-		log.Println("Failed to create Gmail client:", err)
-		http.Error(w, "failed to create gmail client: "+err.Error(), http.StatusInternalServerError)
+		log.Println("Failed to scrape gmail:", err)
+		http.Error(w, "failed to scrape gmail: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Fetch emails from Gmail
-	now := time.Now()
-	weekday := int(now.Weekday())
-	if weekday == 0 { //if its a sunday
-		weekday = 7
-	}
-	monday := now.AddDate(0, 0, -weekday+1)
-	monday = time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, monday.Location())
-	sunday := monday.AddDate(0, 0, 6)
-	sunday = time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 23, 59, 59, 0, sunday.Location())
-
-	after := monday.Unix()
-	before := sunday.Unix()
-
-	query := fmt.Sprintf("after:%d before:%d", after, before)
-	pageToken := ""
-	var parsedMessages []models.GmailMessage
-	for {
-		log.Println("Fetching emails from Gmail")
-		call := gmailClient.Users.Messages.List("me").Q(query).MaxResults(30)
-		if pageToken != "" {
-			call = call.PageToken(pageToken)
-		}
-		messages, err := call.Do()
-		if err != nil {
-			log.Println("Failed to fetch emails:", err)
-			http.Error(w, "failed to fetch emails: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		for i := range messages.Messages {
-			msg, err := gmailClient.Users.Messages.Get("me", messages.Messages[i].Id).Format("full").Do()
-
-			if err != nil {
-				log.Printf("Failed to fetch message details for ID %s: %v\n", messages.Messages[i].Id, err)
-				continue
-			}
-
-			log.Println("Processing message:", msg.Id)
-			allAttatchments := extractAttachmentsFromPayload(msg.Payload)
-
-			svvEmail := ""
-			if email, ok := studentData["email"].(string); ok && email != "" {
-				svvEmail = email
-			}
-
-			msgData := models.GmailMessage{
-				ID:           msg.Id,
-				ThreadID:     msg.ThreadId,
-				Student:      svvEmail,
-				Snippet:      msg.Snippet,
-				Attatchments: allAttatchments,
-			}
-
-			// Extract headers from the actual message payload
-			for _, h := range msg.Payload.Headers {
-				switch h.Name {
-				case "From":
-					msgData.From = h.Value
-				case "To":
-					msgData.To = h.Value
-				case "Subject":
-					msgData.Subject = h.Value
-				case "Date":
-					msgData.Date = h.Value
-				}
-			}
-
-			// Extract body (handle base64 decoding)
-			if msg.Payload.Body != nil && msg.Payload.Body.Data != "" {
-				msgData.Body = decodeBase64Body(msg.Payload.Body.Data)
-			} else if len(msg.Payload.Parts) > 0 {
-				// Look for text/plain or text/html parts
-				for _, part := range msg.Payload.Parts {
-					if part.MimeType == "text/plain" || part.MimeType == "text/html" {
-						if part.Body != nil && part.Body.Data != "" {
-							msgData.Body = decodeBase64Body(part.Body.Data)
-							break
-						}
-					}
-				}
-			}
-
-			parsedMessages = append(parsedMessages, msgData)
-		}
-		if messages.NextPageToken == "" {
-			break
-		}
-		pageToken = messages.NextPageToken
-	}
-
-	// Log sample of parsed messages
-	if len(parsedMessages) > 0 {
-		sampleCount := 3
-		if len(parsedMessages) < sampleCount {
-			sampleCount = len(parsedMessages)
-		}
-		log.Printf("Sample of %d messages (showing %d):", len(parsedMessages), sampleCount)
-		for i := 0; i < sampleCount; i++ {
-			log.Printf("  [%d] From: %s | Subject: %s", i, parsedMessages[i].From, parsedMessages[i].Subject)
-		}
-	}
-
-	// Get today's date for filtering context
-	today := time.Now().Format("2006-01-02")
-
-	// Filter mails using AI filtration service
-	log.Println("Sending emails to AI filtration service...")
-	filterResponse, err := service.FilterEmails(parsedMessages, today)
-	if err != nil {
-		log.Printf("Error during AI filtration: %v", err)
-		log.Println("Proceeding with unfiltered emails as fallback")
-		// Return fallback response with all emails in proper format
-		fallbackMessages := make([]map[string]interface{}, 0)
-		for _, msg := range parsedMessages {
-			fallbackMessages = append(fallbackMessages, map[string]interface{}{
-				"id":          msg.ID,
-				"subject":     msg.Subject,
-				"from":        msg.From,
-				"to":          msg.To,
-				"date":        msg.Date,
-				"snippet":     msg.Snippet,
-				"body":        msg.Body,
-				"category":    "unfiltered",
-				"confidence":  0.0,
-				"attachments": []interface{}{},
-			})
-		}
-		response := map[string]interface{}{
-			"success":        false,
-			"messages":       fallbackMessages,
-			"total_emails":   len(parsedMessages),
-			"filtered_count": 0,
-			"by_category":    map[string]interface{}{},
-			"count":          len(parsedMessages),
-			"error":          err.Error(),
-			"note":           "Returning all emails due to filtration error",
-		}
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-
-	log.Printf("AI filtration completed: %d/%d emails retained", filterResponse.FilteredCount, filterResponse.TotalEmails)
-
-	// Transform filtered results to include all fields mobile app expects
-	transformedMessages := make([]map[string]interface{}, 0)
-	for _, filtered := range filterResponse.AllFiltered {
-		transformedMessages = append(transformedMessages, map[string]interface{}{
-			"id":          "", // ID not available from AI filter, mobile will use index or empty
-			"subject":     filtered.Subject,
-			"from":        filtered.Sender, // Map sender to from
-			"to":          "",              // Not available from AI filter
-			"date":        filtered.Date,
-			"snippet":     "", // Could extract from body if needed
-			"body":        filtered.Body,
-			"category":    filtered.Category,   // Add AI category for reference
-			"confidence":  filtered.Confidence, // Add confidence score
-			"attachments": []interface{}{},     // No attachments in filtered response
-		})
-	}
-
-	// Transform by_category to use same format
-	transformedByCategory := make(map[string][]map[string]interface{})
-	for categoryGroup, emails := range filterResponse.ByCategory {
-		transformedByCategory[categoryGroup] = make([]map[string]interface{}, 0)
-		for _, filtered := range emails {
-			transformedByCategory[categoryGroup] = append(transformedByCategory[categoryGroup], map[string]interface{}{
-				"id":          "",
-				"subject":     filtered.Subject,
-				"from":        filtered.Sender,
-				"to":          "",
-				"date":        filtered.Date,
-				"snippet":     "",
-				"body":        filtered.Body,
-				"category":    filtered.Category,
-				"confidence":  filtered.Confidence,
-				"attachments": []interface{}{},
-			})
-		}
-	}
-
-	// Return organized response with filtered emails
-	// Include 'messages' key for mobile app compatibility
-	response := map[string]interface{}{
-		"success":        true,
-		"messages":       transformedMessages,
-		"total_emails":   filterResponse.TotalEmails,
-		"filtered_count": filterResponse.FilteredCount,
-		"by_category":    transformedByCategory,
-		"all_filtered":   transformedMessages, // Both messages and all_filtered for compatibility
-		"date":           today,
-	}
-
-	log.Println("Writing response header")
 	w.WriteHeader(http.StatusOK)
-
-	if len(transformedMessages) > 0 {
-		log.Printf("[DEBUG] Sample of transformed message being sent to mobile (first message):")
-		log.Printf("  Subject: %v", transformedMessages[0]["subject"])
-		log.Printf("  From: %v", transformedMessages[0]["from"])
-		log.Printf("  Category: %v", transformedMessages[0]["category"])
-		log.Printf("  Confidence: %v", transformedMessages[0]["confidence"])
-	}
-	log.Printf("[DEBUG] Total messages in response: %d", len(transformedMessages))
-	log.Println("Encoding response to JSON")
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -515,9 +304,33 @@ func (h *Handler) HandleGetGmailMessage(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 	}
-	// Filter email using AI filtration service
+
+	// Stage 1: Check sender whitelist before AI filtering
+	senderEmail := extractEmailAddress(msgData.From)
+	facultyMails := *service.GetFacultyMails()
+	whitelistMap := make(map[string]bool)
+	for _, mail := range facultyMails {
+		whitelistMap[strings.ToLower(mail)] = true
+	}
+
+	if !whitelistMap[strings.ToLower(senderEmail)] {
+		log.Printf("Email from %s rejected: sender not in whitelist (subject: %s)", senderEmail, msgData.Subject)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":        false,
+			"filtered_count": 0,
+			"by_category":    map[string]interface{}{},
+			"all_filtered":   []interface{}{},
+			"date":           time.Now().Format("2006-01-02"),
+			"reason":         "sender not in whitelist",
+			"sender":         senderEmail,
+		})
+		return
+	}
+
+	// Stage 2: Filter email using AI filtration service
 	today := time.Now().Format("2006-01-02")
-	log.Println("Filtering single email through AI service...")
+	log.Println("Email passed sender whitelist. Filtering through AI service...")
 	filterResponse, err := service.FilterEmails([]models.GmailMessage{msgData}, today)
 	if err != nil {
 		log.Printf("Error filtering email: %v", err)

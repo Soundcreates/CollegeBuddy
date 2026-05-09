@@ -1,7 +1,7 @@
 import logging
 import time
 from typing import TYPE_CHECKING
-from app.model import zero_shot_classify
+from app.model import semantic_classify
 from app.inference import TARGET_CATEGORIES, CONFIDENCE_THRESHOLD
 
 if TYPE_CHECKING:
@@ -20,13 +20,15 @@ class EmailFilterService:
         "grades": ["grade notification"],
         "important": ["urgent notification", "important notice", "administrative notice", "holiday notice"],
         "meetings": ["meeting", "event"],
+        "study": ["study material", "study resources", "academic"],
     }
     
-    # Keywords for additional context-based filtering
+    # Keywords for additional context-based filtering (increased coverage)
     URGENT_KEYWORDS = ["urgent", "asap", "immediately", "deadline", "critical", "important"]
-    EXAM_KEYWORDS = ["exam", "test", "quiz", "final", "midterm", "assessment"]
-    CLASS_KEYWORDS = ["class", "lecture", "session", "online", "zoom", "meet", "live session"]
-    ASSIGNMENT_KEYWORDS = ["assignment", "project", "task", "submission", "deadline"]
+    EXAM_KEYWORDS = ["exam", "test", "quiz", "final", "midterm", "assessment", "evaluation"]
+    CLASS_KEYWORDS = ["class", "lecture", "session", "online", "zoom", "meet", "live session", "course", "module", "topic"]
+    ASSIGNMENT_KEYWORDS = ["assignment", "project", "task", "submission", "deadline", "homework", "work", "submit"]
+    STUDY_KEYWORDS = ["study", "learning", "material", "resources", "notes", "reading", "practice", "tutorial", "guide"]
     
     @staticmethod
     def extract_text_for_classification(email: "Email") -> str:
@@ -43,26 +45,34 @@ class EmailFilterService:
     ) -> tuple[str, float]:
         """
         Calculate enhanced confidence score based on AI classification 
-        and keyword matching
+        and keyword matching (more lenient with larger boosts)
         """
         text_lower = f"{subject} {body}".lower()
         
-        # Boost confidence based on keyword matching
+        # Boost confidence based on keyword matching (increased boost amounts)
         keyword_boost = 0.0
         
         if ai_label in EmailFilterService.EXAM_KEYWORDS:
             if any(kw in text_lower for kw in EmailFilterService.EXAM_KEYWORDS):
-                keyword_boost = 0.1
+                keyword_boost = 0.20
         elif ai_label in EmailFilterService.CLASS_KEYWORDS:
             if any(kw in text_lower for kw in EmailFilterService.CLASS_KEYWORDS):
-                keyword_boost = 0.1
+                keyword_boost = 0.25
         elif ai_label in EmailFilterService.ASSIGNMENT_KEYWORDS:
             if any(kw in text_lower for kw in EmailFilterService.ASSIGNMENT_KEYWORDS):
-                keyword_boost = 0.1
+                keyword_boost = 0.25
+        elif ai_label in EmailFilterService.STUDY_KEYWORDS:
+            if any(kw in text_lower for kw in EmailFilterService.STUDY_KEYWORDS):
+                keyword_boost = 0.20
         
-        # Boost for urgent keywords
+        # Boost for urgent keywords (increased boost)
         if any(kw in text_lower for kw in EmailFilterService.URGENT_KEYWORDS):
-            keyword_boost = max(keyword_boost, 0.15)
+            keyword_boost = max(keyword_boost, 0.25)
+        
+        # Additional boost for generic study keywords
+        study_keywords_found = any(kw in text_lower for kw in EmailFilterService.STUDY_KEYWORDS)
+        if study_keywords_found and keyword_boost == 0.0:
+            keyword_boost = 0.15
         
         final_score = min(ai_score + keyword_boost, 1.0)
         return ai_label, final_score
@@ -111,12 +121,11 @@ class EmailFilterService:
             per_call_timeout = min(20.0, max(5.0, remaining_budget))
             
             try:
-                # Extract text and classify
+                # Extract text and classify using semantic similarity
                 text_for_classification = EmailFilterService.extract_text_for_classification(email)
-                result = zero_shot_classify(
+                result = semantic_classify(
                     text_for_classification,
-                    TARGET_CATEGORIES,
-                    per_call_timeout
+                    TARGET_CATEGORIES
                 )
                 
                 if not result.get("labels") or not result.get("scores"):
@@ -133,6 +142,27 @@ class EmailFilterService:
                     email.subject,
                     email.body
                 )
+                
+                # Fallback: if AI score is low but email has strong study keywords, boost it
+                text_lower = f"{email.subject} {email.body}".lower()
+                if final_score < CONFIDENCE_THRESHOLD:
+                    # Check for strong study indicators
+                    study_keyword_count = sum(1 for kw in EmailFilterService.STUDY_KEYWORDS if kw in text_lower)
+                    class_keyword_count = sum(1 for kw in EmailFilterService.CLASS_KEYWORDS if kw in text_lower)
+                    assign_keyword_count = sum(1 for kw in EmailFilterService.ASSIGNMENT_KEYWORDS if kw in text_lower)
+                    exam_keyword_count = sum(1 for kw in EmailFilterService.EXAM_KEYWORDS if kw in text_lower)
+                    
+                    total_keyword_matches = study_keyword_count + class_keyword_count + assign_keyword_count + exam_keyword_count
+                    
+                    # If multiple study keywords found, mark as academic
+                    if total_keyword_matches >= 2:
+                        final_label = "academic"
+                        final_score = 0.45  # Above new threshold of 0.35
+                        logger.debug(
+                            "Email %d: Boosted to 'academic' due to %d keyword matches",
+                            idx,
+                            total_keyword_matches
+                        )
                 
                 # Only include if confidence exceeds threshold
                 if final_score >= CONFIDENCE_THRESHOLD:

@@ -8,17 +8,24 @@ class WidgetService {
   final MailApi mailService = MailApi();
 
   /// Fetches mails from API and saves them to the home widget
+  /// NO CACHING - Always fetches fresh data
   Future<List<MailModel>> fetchMailsFromApi() async {
+    print("[WIDGET SERVICE] Fetching FRESH mails from API (NO CACHE)");
     final mails = await mailService.fetchUserMails();
     if (mails != null) {
+      print("[WIDGET SERVICE] Fetched ${mails.length} mails, updating widget");
       await updateEmails(mails);
+    } else {
+      print("[WIDGET SERVICE] Failed to fetch mails");
     }
     return mails ?? [];
   }
 
   /// Converts MailModel list to WidgetMailModel and saves to home widget
+  /// Always overwrites with fresh data
   static Future<void> updateEmails(List<MailModel> emailList) async {
     try {
+      print("[WIDGET UPDATE] Updating widget with ${emailList.length} emails (clearing old data)");
       final widgetMails = emailList
           .map((mail) => WidgetMailModel(
                 id: mail.id,
@@ -29,16 +36,23 @@ class WidgetService {
               ))
           .toList();
 
+      // Clear old data first
       await HomeWidget.saveWidgetData<String>(
         'emails_json',
         jsonEncode(widgetMails.map((m) => m.toJson()).toList()),
       );
+
+      // Also clear the old 'emails' key if it exists
+      await HomeWidget.saveWidgetData<String>('emails', '');
+
+      print("[WIDGET UPDATE] Widget data saved successfully");
 
       // Trigger widget update
       await HomeWidget.updateWidget(
         name: 'MyWidgetProvider',
         iOSName: 'MyWidgetProvider',
       );
+      print("[WIDGET UPDATE] Widget refresh triggered");
     } catch (e) {
       print('Error updating widget: $e');
     }
