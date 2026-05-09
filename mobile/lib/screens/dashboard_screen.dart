@@ -5,6 +5,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:mobile/api/mailApi.dart';
 import 'email_view_screen.dart';
 import 'package:mobile/screens/settings_screen.dart';
+import 'package:mobile/screens/classroom_screen.dart';
 import "package:mobile/models/userModel.dart";
 import "package:mobile/models/mailModel.dart";
 import "package:mobile/cache/BigDataRepository.dart";
@@ -587,7 +588,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       Expanded(child: _buildNavItem(Icons.mail, 'Inbox', true, secondaryContainer, onSecondaryContainer)),
-                      Expanded(child: _buildNavItem(Icons.spa, 'Focus', false, Colors.transparent, onSurfaceVariant)),
+                      Expanded(child: _buildNavItem(Icons.school, 'Classroom', false, Colors.transparent, onSurfaceVariant, onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ClassroomScreen(),
+                          ),
+                        );
+                      })),
                       Expanded(child: _buildNavItem(Icons.inventory_2, 'Archive', false, Colors.transparent, onSurfaceVariant)),
                       Expanded(child: _buildNavItem(Icons.settings, 'Settings', false, Colors.transparent, onSurfaceVariant, onTap: () {
                         Navigator.push(

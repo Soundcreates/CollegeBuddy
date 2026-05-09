@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/api/authApi.dart';
+import 'package:mobile/api/classroomApi.dart';
 import 'package:provider/provider.dart';
 import 'screens/loading_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/classroom_screen.dart';
 import "package:mobile/api/mailApi.dart";
 
 
@@ -13,6 +15,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthApi()),
         ChangeNotifierProvider(create: (_) => MailApi()),
+        ChangeNotifierProvider(create: (_) => ClassroomApi()),
       ],
       child: CollegeBuddyApp(),
     ),
@@ -41,6 +44,7 @@ class CollegeBuddyApp extends StatelessWidget {
         '/': (context) => const LoadingScreen(),
         '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/classroom': (context) => const ClassroomScreen(),
       },
     );
   }

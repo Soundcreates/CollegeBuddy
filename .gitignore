@@ -7,3 +7,6 @@
 *.sh
 */*.sh
 .codex
+earthy-email-dashboard/*a
+scraperService/BACKEND_INTEGRATION_GUIDE.py
+earthy-email-dashboard

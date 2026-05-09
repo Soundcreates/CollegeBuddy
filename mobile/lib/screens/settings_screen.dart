@@ -6,6 +6,7 @@ import 'package:mobile/api/authApi.dart';
 import 'package:mobile/models/userModel.dart';
 import "package:mobile/cache/BigDataRepository.dart";
 import 'package:animate_do/animate_do.dart';
+import 'package:mobile/screens/classroom_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -396,7 +397,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Expanded(child: _buildNavItem(Icons.mail, 'Inbox', false, Colors.transparent, onSurfaceVariant, onTap: () {
                         Navigator.pop(context); // Go back to dashboard
                       })),
-                      Expanded(child: _buildNavItem(Icons.spa, 'Focus', false, Colors.transparent, onSurfaceVariant)),
+                      Expanded(child: _buildNavItem(Icons.school, 'Classroom', false, Colors.transparent, onSurfaceVariant, onTap: () {
+                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ClassroomScreen()));
+                      })),
                       Expanded(child: _buildNavItem(Icons.inventory_2, 'Archive', false, Colors.transparent, onSurfaceVariant)),
                       Expanded(child: _buildNavItem(Icons.settings, 'Settings', true, secondaryContainer, onSecondaryContainer)),
                     ],

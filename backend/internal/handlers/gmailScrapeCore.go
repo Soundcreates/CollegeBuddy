@@ -265,4 +265,3 @@ func extractEmailAddress(from string) string {
 	// Return as-is if already plain email
 	return from
 }
-sd

@@ -35,6 +35,9 @@ func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
 			"https://www.googleapis.com/auth/userinfo.profile",
 			"https://www.googleapis.com/auth/gmail.readonly",
 			"https://www.googleapis.com/auth/gmail.modify",
+			"https://www.googleapis.com/auth/classroom.courses.readonly",
+			"https://www.googleapis.com/auth/classroom.coursework.me",
+			"https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
 		},
 		Endpoint: google.Endpoint,
 	}

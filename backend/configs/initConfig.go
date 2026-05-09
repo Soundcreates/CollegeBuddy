@@ -23,6 +23,7 @@ type Config struct {
 	BACKEND_URL         string
 	MODE                string
 	GMAIL_SCRAPE_CRON   string
+	SCRAPER_SERVICE_URL string
 }
 
 func LoadConfig() *Config {
@@ -38,6 +39,11 @@ func LoadConfig() *Config {
 	// 		dbPort = dbp
 	// 	}
 	// }
+
+	scraperURL := os.Getenv("SCRAPER_SERVICE_URL")
+	if scraperURL == "" {
+		scraperURL = "http://python:8000" // default for local dev
+	}
 
 	cfg := &Config{
 		DB_URI:              os.Getenv("DB_URI"),
@@ -55,6 +61,7 @@ func LoadConfig() *Config {
 		BACKEND_URL:         os.Getenv("BACKEND_URL"),
 		MODE:                os.Getenv("MODE"),
 		GMAIL_SCRAPE_CRON:   os.Getenv("GMAIL_SCRAPE_CRON"),
+		SCRAPER_SERVICE_URL: scraperURL,
 	}
 
 	return cfg

@@ -18,6 +18,10 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="CollegeBuddy Email Filter", version="1.0.0")
 logger = logging.getLogger(__name__)
 
+# Mount RAG pipeline router
+from app.rag.router import router as rag_router
+app.include_router(rag_router)
+
 @app.post("/text-classification")
 async def classify_text(request: TextClassificationRequest):
     logger.info("Received request for text classification with %d items", len(request.text))

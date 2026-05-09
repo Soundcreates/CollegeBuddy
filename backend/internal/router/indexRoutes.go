@@ -24,5 +24,7 @@ func RegisterRoutes(h *handler.Handler) *http.ServeMux {
 
 	registerScraperRoutes(h, apiRouter)
 
+	registerClassroomRoutes(h, apiRouter)
+
 	return mainRouter
 }

@@ -6,3 +6,6 @@ pydantic
 python-dotenv
 uvicorn
 sentence-transformers
+PyPDF2
+groq
+numpy
