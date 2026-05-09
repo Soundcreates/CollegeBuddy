@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/api/authApi.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -10,6 +11,10 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
+  // Colors based on the design
+  static const Color background = Color(0xFF161311);
+  static const Color primary = Color(0xFFFFB59C);
+
   @override
   void initState() {
     super.initState();
@@ -22,10 +27,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
     if (!mounted) return;
     final user = await AuthApi().currentUser;
-    // Check auth status (AuthService should verify silent login if implemented)
-    // For now simple navigation:
-    // final auth = Provider.of<AuthService>(context, listen: false);
-    // if (auth.isAuthenticated) ... else ...
+    // Check auth status
     print("user: $user");
     Navigator.pushReplacementNamed(
       context,
@@ -37,7 +39,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: background,
       body: Center(
         child: FadeIn(
           duration: const Duration(milliseconds: 1500),
@@ -46,29 +48,27 @@ class _LoadingScreenState extends State<LoadingScreen> {
             children: [
               // Logo Icon placeholder
               Container(
-                width: 80,
-                height: 80,
+                width: 96,
+                height: 96,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.1),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  color: primary.withOpacity(0.1),
                 ),
                 child: const Icon(
-                  Icons.school_rounded,
-                  size: 40,
-                  color: Colors.white,
+                  Icons.spa,
+                  size: 48,
+                  color: primary,
                 ),
               ),
               const SizedBox(height: 24),
               // App Name
               Text(
                 'CollegeBuddy',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 2.0,
-                  fontFamily: 'Roboto', // Will use Google Fonts in main
+                style: GoogleFonts.literata(
+                  color: primary,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
                 ),
               ),
             ],
@@ -78,3 +78,4 @@ class _LoadingScreenState extends State<LoadingScreen> {
     );
   }
 }
+

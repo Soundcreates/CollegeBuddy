@@ -287,8 +287,6 @@ func (h *Handler) HandleGetGmailMessage(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	msgData.Attatchments = extractAttachmentsFromPayload(msg.Payload)
-
 	// Extract body (handle base64 decoding)
 	if msg.Payload.Body != nil && msg.Payload.Body.Data != "" {
 		// Decode base64 body
@@ -340,11 +338,62 @@ func (h *Handler) HandleGetGmailMessage(w http.ResponseWriter, r *http.Request) 
 
 	log.Printf("Email filtered: %d/%d retained", filterResponse.FilteredCount, filterResponse.TotalEmails)
 
+	filteredMessageIDs := make([]string, 0, len(filterResponse.AllFiltered))
+	for _, filtered := range filterResponse.AllFiltered {
+		if filtered.ID != "" {
+			filteredMessageIDs = append(filteredMessageIDs, filtered.ID)
+		}
+	}
+	attachmentsByID := fetchAttachmentsByMessageIDs(gmailClient, filteredMessageIDs)
+
+	transformedMessages := make([]map[string]interface{}, 0, len(filterResponse.AllFiltered))
+	for _, filtered := range filterResponse.AllFiltered {
+		attachments := attachmentsByID[filtered.ID]
+		if attachments == nil {
+			attachments = []models.Attatchment{}
+		}
+		transformedMessages = append(transformedMessages, map[string]interface{}{
+			"id":          filtered.ID,
+			"subject":     filtered.Subject,
+			"from":        filtered.Sender,
+			"to":          msgData.To,
+			"date":        filtered.Date,
+			"snippet":     msgData.Snippet,
+			"body":        filtered.Body,
+			"category":    filtered.Category,
+			"confidence":  filtered.Confidence,
+			"attachments": attachments,
+		})
+	}
+
+	transformedByCategory := make(map[string][]map[string]interface{}, len(filterResponse.ByCategory))
+	for categoryGroup, emails := range filterResponse.ByCategory {
+		transformedByCategory[categoryGroup] = make([]map[string]interface{}, 0, len(emails))
+		for _, filtered := range emails {
+			attachments := attachmentsByID[filtered.ID]
+			if attachments == nil {
+				attachments = []models.Attatchment{}
+			}
+			transformedByCategory[categoryGroup] = append(transformedByCategory[categoryGroup], map[string]interface{}{
+				"id":          filtered.ID,
+				"subject":     filtered.Subject,
+				"from":        filtered.Sender,
+				"to":          msgData.To,
+				"date":        filtered.Date,
+				"snippet":     msgData.Snippet,
+				"body":        filtered.Body,
+				"category":    filtered.Category,
+				"confidence":  filtered.Confidence,
+				"attachments": attachments,
+			})
+		}
+	}
+
 	response := map[string]interface{}{
 		"success":        true,
 		"filtered_count": filterResponse.FilteredCount,
-		"by_category":    filterResponse.ByCategory,
-		"all_filtered":   filterResponse.AllFiltered,
+		"by_category":    transformedByCategory,
+		"all_filtered":   transformedMessages,
 		"date":           today,
 	}
 

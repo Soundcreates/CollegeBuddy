@@ -172,13 +172,11 @@ func (h *Handler) runGmailStreamJob(jobID string, userEmail string, token string
 			if err != nil {
 				continue
 			}
-			allAttatchments := extractAttachmentsFromPayload(msg.Payload)
 			msgData := models.GmailMessage{
-				ID:           msg.Id,
-				ThreadID:     msg.ThreadId,
-				Student:      userEmail,
-				Snippet:      msg.Snippet,
-				Attatchments: allAttatchments,
+				ID:       msg.Id,
+				ThreadID: msg.ThreadId,
+				Student:  userEmail,
+				Snippet:  msg.Snippet,
 			}
 			for _, hdr := range msg.Payload.Headers {
 				switch hdr.Name {
@@ -227,10 +225,22 @@ func (h *Handler) runGmailStreamJob(jobID string, userEmail string, token string
 			continue
 		}
 
+		filteredMessageIDs := make([]string, 0, len(filterResponse.AllFiltered))
+		for _, filtered := range filterResponse.AllFiltered {
+			if filtered.ID != "" {
+				filteredMessageIDs = append(filteredMessageIDs, filtered.ID)
+			}
+		}
+		attachmentsByID := fetchAttachmentsByMessageIDs(gmailClient, filteredMessageIDs)
+
 		batch := make([]map[string]interface{}, 0, len(filterResponse.AllFiltered))
 		for _, filtered := range filterResponse.AllFiltered {
+			attachments := attachmentsByID[filtered.ID]
+			if attachments == nil {
+				attachments = []models.Attatchment{}
+			}
 			batch = append(batch, map[string]interface{}{
-				"id":          "",
+				"id":          filtered.ID,
 				"subject":     filtered.Subject,
 				"from":        filtered.Sender,
 				"to":          "",
@@ -239,7 +249,7 @@ func (h *Handler) runGmailStreamJob(jobID string, userEmail string, token string
 				"body":        filtered.Body,
 				"category":    filtered.Category,
 				"confidence":  filtered.Confidence,
-				"attachments": []interface{}{},
+				"attachments": attachments,
 			})
 		}
 

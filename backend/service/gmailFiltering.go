@@ -15,6 +15,7 @@ import (
 
 // Email represents the schema expected by scraperService
 type FilterableEmail struct {
+	ID       string `json:"id,omitempty"`
 	Subject  string `json:"subject"`
 	Sender   string `json:"sender"`
 	Body     string `json:"body"`
@@ -24,6 +25,7 @@ type FilterableEmail struct {
 
 // FilteredEmailResult represents a filtered email from scraperService
 type FilteredEmailResult struct {
+	ID         string  `json:"id,omitempty"`
 	Subject    string  `json:"subject"`
 	Sender     string  `json:"sender"`
 	Body       string  `json:"body"`
@@ -66,6 +68,7 @@ func FilterEmails(mails []models.GmailMessage, filterDate string) (FilterRespons
 	filterableEmails := make([]FilterableEmail, 0)
 	for _, msg := range mails {
 		email := FilterableEmail{
+			ID:      msg.ID,
 			Subject: msg.Subject,
 			Sender:  msg.From,
 			Body:    msg.Body,

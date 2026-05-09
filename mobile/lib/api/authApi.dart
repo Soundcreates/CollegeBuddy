@@ -33,8 +33,8 @@ class AuthApi extends ChangeNotifier {
       Navigator.of(context).pushReplacementNamed("/dashboard");
     });
   }
-
-  // Local/public testing via ngrok
+  
+  //we gon use ngrok for ts one
   final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev";
   Future<void> startGoogleOauth() async {
     // Encode device info in the state parameter

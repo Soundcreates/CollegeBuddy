@@ -8,7 +8,26 @@ import (
 	"somaiya-ext/service"
 	"strings"
 	"time"
+
+	"google.golang.org/api/gmail/v1"
 )
+
+func fetchAttachmentsByMessageIDs(gmailClient *gmail.Service, messageIDs []string) map[string][]models.Attatchment {
+	attachmentsByID := make(map[string][]models.Attatchment, len(messageIDs))
+	for _, id := range messageIDs {
+		if id == "" {
+			continue
+		}
+		msg, err := gmailClient.Users.Messages.Get("me", id).Format("full").Do()
+		if err != nil {
+			log.Printf("Failed to fetch attachments for message ID %s: %v", id, err)
+			attachmentsByID[id] = []models.Attatchment{}
+			continue
+		}
+		attachmentsByID[id] = extractAttachmentsFromPayload(msg.Payload)
+	}
+	return attachmentsByID
+}
 
 func (h *Handler) scrapeAndFilterGmail(ctx context.Context, email, accessToken, refreshToken string) (map[string]interface{}, error) {
 	gmailService := service.NewGmailService(h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET)
@@ -57,13 +76,11 @@ func (h *Handler) scrapeAndFilterGmail(ctx context.Context, email, accessToken, 
 				continue
 			}
 
-			allAttatchments := extractAttachmentsFromPayload(msg.Payload)
 			msgData := models.GmailMessage{
-				ID:           msg.Id,
-				ThreadID:     msg.ThreadId,
-				Student:      email,
-				Snippet:      msg.Snippet,
-				Attatchments: allAttatchments,
+				ID:       msg.Id,
+				ThreadID: msg.ThreadId,
+				Student:  email,
+				Snippet:  msg.Snippet,
 			}
 
 			for _, hdr := range msg.Payload.Headers {
@@ -103,13 +120,13 @@ func (h *Handler) scrapeAndFilterGmail(ctx context.Context, email, accessToken, 
 
 	// First-stage filtering: sender whitelist (before AI filtering)
 	whitelistedMessages := filterByWhitelist(parsedMessages)
-	log.Printf("Sender whitelist filter: %d/%d emails passed (removed %d non-whitelisted)", 
+	log.Printf("Sender whitelist filter: %d/%d emails passed (removed %d non-whitelisted)",
 		len(whitelistedMessages), len(parsedMessages), len(parsedMessages)-len(whitelistedMessages))
 
-	return buildScrapeResponse(whitelistedMessages), nil
+	return buildScrapeResponse(gmailClient, whitelistedMessages), nil
 }
 
-func buildScrapeResponse(parsedMessages []models.GmailMessage) map[string]interface{} {
+func buildScrapeResponse(gmailClient *gmail.Service, parsedMessages []models.GmailMessage) map[string]interface{} {
 	today := time.Now().Format("2006-01-02")
 	filterResponse, err := service.FilterEmails(parsedMessages, today)
 	if err != nil {
@@ -143,11 +160,22 @@ func buildScrapeResponse(parsedMessages []models.GmailMessage) map[string]interf
 			"note":           "Returning all emails due to filtration error",
 		}
 	}
+	filteredMessageIDs := make([]string, 0, len(filterResponse.AllFiltered))
+	for _, filtered := range filterResponse.AllFiltered {
+		if filtered.ID != "" {
+			filteredMessageIDs = append(filteredMessageIDs, filtered.ID)
+		}
+	}
+	attachmentsByID := fetchAttachmentsByMessageIDs(gmailClient, filteredMessageIDs)
 
 	transformedMessages := make([]map[string]interface{}, 0, len(filterResponse.AllFiltered))
 	for _, filtered := range filterResponse.AllFiltered {
+		attachments := attachmentsByID[filtered.ID]
+		if attachments == nil {
+			attachments = []models.Attatchment{}
+		}
 		transformedMessages = append(transformedMessages, map[string]interface{}{
-			"id":          "",
+			"id":          filtered.ID,
 			"subject":     filtered.Subject,
 			"from":        filtered.Sender,
 			"to":          "",
@@ -156,7 +184,7 @@ func buildScrapeResponse(parsedMessages []models.GmailMessage) map[string]interf
 			"body":        filtered.Body,
 			"category":    filtered.Category,
 			"confidence":  filtered.Confidence,
-			"attachments": []interface{}{},
+			"attachments": attachments,
 		})
 	}
 
@@ -164,8 +192,12 @@ func buildScrapeResponse(parsedMessages []models.GmailMessage) map[string]interf
 	for categoryGroup, emails := range filterResponse.ByCategory {
 		transformedByCategory[categoryGroup] = make([]map[string]interface{}, 0, len(emails))
 		for _, filtered := range emails {
+			attachments := attachmentsByID[filtered.ID]
+			if attachments == nil {
+				attachments = []models.Attatchment{}
+			}
 			transformedByCategory[categoryGroup] = append(transformedByCategory[categoryGroup], map[string]interface{}{
-				"id":          "",
+				"id":          filtered.ID,
 				"subject":     filtered.Subject,
 				"from":        filtered.Sender,
 				"to":          "",
@@ -174,7 +206,7 @@ func buildScrapeResponse(parsedMessages []models.GmailMessage) map[string]interf
 				"body":        filtered.Body,
 				"category":    filtered.Category,
 				"confidence":  filtered.Confidence,
-				"attachments": []interface{}{},
+				"attachments": attachments,
 			})
 		}
 	}
@@ -233,3 +265,4 @@ func extractEmailAddress(from string) string {
 	// Return as-is if already plain email
 	return from
 }
+sd

@@ -167,6 +167,7 @@ class EmailFilterService:
                 # Only include if confidence exceeds threshold
                 if final_score >= CONFIDENCE_THRESHOLD:
                     filtered_email = FilteredEmail(
+                        id=email.id,
                         subject=email.subject,
                         sender=email.sender,
                         body=email.body,
