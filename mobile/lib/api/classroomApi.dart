@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:mobile/models/classroomModel.dart';
 
 class ClassroomApi extends ChangeNotifier {
@@ -149,9 +151,10 @@ class ClassroomApi extends ChangeNotifier {
           "description": description,
           "file_url": fileUrl,
         }),
-      );
+      ).timeout(const Duration(seconds: 120));
 
       print("[CLASSROOM API] AI help response: ${response.statusCode}");
+      print("[CLASSROOM API] AI help body: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -172,6 +175,68 @@ class ClassroomApi extends ChangeNotifier {
     } finally {
       _isLoadingAIHelp = false;
       notifyListeners();
+    }
+  }
+
+  /// Download a file attachment via the backend proxy and save to device
+  /// Returns the local file path if successful, null otherwise
+  Future<String?> downloadAttachment({
+    required String originalUrl,
+    required String filename,
+    Function(double)? onProgress,
+  }) async {
+    print("[CLASSROOM API] downloadAttachment called: $filename");
+
+    try {
+      final headers = await _authHeaders();
+      // Remove content-type for download (it's not JSON)
+      headers.remove("Content-Type");
+
+      final proxyUrl = "$baseUrl/api/classroom/attachment?url=${Uri.encodeComponent(originalUrl)}";
+      
+      final request = http.Request('GET', Uri.parse(proxyUrl));
+      request.headers.addAll(headers);
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 120),
+      );
+
+      if (streamedResponse.statusCode != 200) {
+        print("[CLASSROOM API] Download failed: ${streamedResponse.statusCode}");
+        return null;
+      }
+
+      // Get the download directory
+      final dir = await getApplicationDocumentsDirectory();
+      final downloadsDir = Directory('${dir.path}/CollegeBuddy');
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+
+      // Sanitize filename
+      final safeFilename = filename.replaceAll(RegExp(r'[^\w\s\-.]'), '_');
+      final filePath = '${downloadsDir.path}/$safeFilename';
+      
+      final file = File(filePath);
+      final sink = file.openWrite();
+
+      final contentLength = streamedResponse.contentLength ?? 0;
+      int received = 0;
+
+      await for (final chunk in streamedResponse.stream) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (contentLength > 0 && onProgress != null) {
+          onProgress(received / contentLength);
+        }
+      }
+
+      await sink.close();
+      print("[CLASSROOM API] File saved to: $filePath");
+      return filePath;
+    } catch (e) {
+      print("[CLASSROOM API] Download error: $e");
+      return null;
     }
   }
 

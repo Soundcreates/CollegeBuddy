@@ -331,67 +331,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         iconColor = onSurfaceVariant;
     }
 
-    return GestureDetector(
-      onTap: () async {
-        if (material.url.isNotEmpty) {
-          final uri = Uri.parse(material.url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: outlineVariant.withOpacity(0.15)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 20, color: iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    material.title.isNotEmpty ? material.title : 'Untitled',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    material.type == 'driveFile'
-                        ? 'Google Drive file'
-                        : material.type,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: onSurfaceVariant.withOpacity(0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.download_rounded,
-                size: 20, color: onSurfaceVariant.withOpacity(0.4)),
-          ],
-        ),
-      ),
+    return _MaterialCardWidget(
+      material: material,
+      icon: icon,
+      iconColor: iconColor,
+      api: _api,
     );
   }
 
@@ -725,6 +669,27 @@ class _AIHelpModalState extends State<_AIHelpModal> {
   }
 
   Widget _buildSuccessContent() {
+    // Check if we have Q&A pairs (from assignment-help endpoint)
+    if (_response!.hasQuestionsAnswers) {
+      return _buildQAContent();
+    }
+    // Otherwise show sections (from analyze endpoint)
+    if (_response!.hasSections) {
+      return _buildSectionsContent();
+    }
+    // Fallback
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Text(
+          'No content available',
+          style: GoogleFonts.inter(color: onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionsContent() {
     final sections = _response!.sections;
 
     return ListView.builder(
@@ -802,6 +767,313 @@ class _AIHelpModalState extends State<_AIHelpModal> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildQAContent() {
+    final qaMap = _response!.questionsAnswers;
+    final qaList = qaMap.entries.toList();
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      itemCount: qaList.length,
+      itemBuilder: (context, index) {
+        final entry = qaList[index];
+        return FadeInUp(
+          delay: Duration(milliseconds: index * 80),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: surfaceContainerLow,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: outlineVariant.withOpacity(0.2)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Question
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Q${index + 1}',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.key,
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: onSurface,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 40),
+                    child: Container(
+                      width: 2,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: primary.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Answer
+                  Padding(
+                    padding: const EdgeInsets.only(left: 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Answer',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: onSurfaceVariant.withOpacity(0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          entry.value,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: onSurface.withOpacity(0.9),
+                            fontWeight: FontWeight.w400,
+                            height: 1.6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  MATERIAL CARD WITH DOWNLOAD (Stateful)
+// ═══════════════════════════════════════════════
+
+class _MaterialCardWidget extends StatefulWidget {
+  final MaterialModel material;
+  final IconData icon;
+  final Color iconColor;
+  final ClassroomApi api;
+
+  const _MaterialCardWidget({
+    required this.material,
+    required this.icon,
+    required this.iconColor,
+    required this.api,
+  });
+
+  @override
+  State<_MaterialCardWidget> createState() => _MaterialCardWidgetState();
+}
+
+class _MaterialCardWidgetState extends State<_MaterialCardWidget> {
+  bool _downloading = false;
+  double _progress = 0.0;
+  String? _downloadedPath;
+
+  static const Color surfaceContainerLowest = Color(0xFF110D0C);
+  static const Color outlineVariant = Color(0xFF55433D);
+  static const Color onSurface = Color(0xFFEAE1DD);
+  static const Color onSurfaceVariant = Color(0xFFDBC1B9);
+  static const Color primary = Color(0xFFFFB59C);
+
+  Future<void> _handleDownload() async {
+    if (_downloading) return;
+
+    setState(() {
+      _downloading = true;
+      _progress = 0.0;
+    });
+
+    final filename = widget.material.title.isNotEmpty
+        ? widget.material.title
+        : 'download';
+
+    final path = await widget.api.downloadAttachment(
+      originalUrl: widget.material.downloadUrl.isNotEmpty ? widget.material.downloadUrl : widget.material.url,
+      filename: filename,
+      onProgress: (p) {
+        if (mounted) setState(() => _progress = p);
+      },
+    );
+
+    if (mounted) {
+      setState(() {
+        _downloading = false;
+        _downloadedPath = path;
+      });
+
+      if (path != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Downloaded: $filename'),
+            backgroundColor: const Color(0xFF2E4D2E),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: primary,
+              onPressed: () async {
+                // Try to open the file
+                final uri = Uri.file(path);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Download failed. Try opening in browser.'),
+            backgroundColor: Color(0xFF4D2E2E),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        // Fallback: open in browser
+        if (widget.material.url.isNotEmpty) {
+          final uri = Uri.parse(widget.material.url);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _handleDownload,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: outlineVariant.withOpacity(0.15)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: widget.iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(widget.icon, size: 20, color: widget.iconColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.material.title.isNotEmpty
+                            ? widget.material.title
+                            : 'Untitled',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _downloading
+                            ? 'Downloading...'
+                            : _downloadedPath != null
+                                ? 'Downloaded ✓'
+                                : widget.material.type == 'driveFile'
+                                    ? 'Tap to download'
+                                    : widget.material.type,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: _downloadedPath != null
+                              ? const Color(0xFF81C784)
+                              : onSurfaceVariant.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _downloading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          value: _progress > 0 ? _progress : null,
+                          color: primary,
+                        ),
+                      )
+                    : Icon(
+                        _downloadedPath != null
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.download_rounded,
+                        size: 20,
+                        color: _downloadedPath != null
+                            ? const Color(0xFF81C784)
+                            : onSurfaceVariant.withOpacity(0.4),
+                      ),
+              ],
+            ),
+            if (_downloading && _progress > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: _progress,
+                    minHeight: 3,
+                    backgroundColor: outlineVariant.withOpacity(0.2),
+                    color: primary,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

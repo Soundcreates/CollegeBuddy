@@ -74,23 +74,29 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	log.Println("[CLASSROOM] HandleListCourses called")
 	response_payload := make(map[string]interface{})
-	//handling query
+	
+	// Extract token once at the start
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	
+	// Fetch profile once
+	curr_user, err := h.BackendProfile(token)
+	if err != nil {
+		log.Printf("Failed to fetch backend profile: %v", err)
+		http.Error(w, "failed to fetch backend profile", http.StatusInternalServerError)
+		return
+	}
+	curr_user_mail := curr_user["user"].(map[string]interface{})["email"].(string)
+	
+	// Check if refresh param is set
 	refresh_val := r.URL.Query().Get("refresh")
 	if refresh_val == "" {
-		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		curr_user, err := h.BackendProfile(token)
-		if err != nil {
-			log.Printf("Failed to fetch backend profile: %v", err)
-			return
-		}
 		log.Println("Trying to fetch courses from db")
-		curr_user_mail := curr_user["user"].(map[string]interface{})["email"].(string)
 		var student models.Student
 		// Preload Courses association so we can return cached courses if present
 		if err := h.DB.Preload("Courses").Where("svv_email = ?", curr_user_mail).First(&student).Error; err != nil {
 			log.Printf("Failed to fetch classroom courses from DB for %s: %v", curr_user_mail, err)
 		} else {
-			log.Printf("Fetched student from db with ID = %s ; found %d courses", string(student.ID), len(student.Courses))
+			log.Printf("Fetched student from db with ID = %s ; found %d courses", student.ID, len(student.Courses))
 			if len(student.Courses) > 0 {
 				cached := make([]models.CourseResponse, 0, len(student.Courses))
 				for _, sc := range student.Courses {
@@ -140,16 +146,8 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 			State:       c.CourseState,
 		})
 	}
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	curr_user, err := h.BackendProfile(token)
-	if err != nil {
-		log.Printf("Failed to fetch backend profile: %v", err)
-		http.Error(w, "failed to fetch backend profile", http.StatusInternalServerError)
-		return
-	}
-	curr_user_mail := curr_user["user"].(map[string]interface{})["email"].(string)
 
-	// Persist courses as associated Course records for the student
+	// Persist courses as associated Course records for the student (reuse profile from earlier)
 	var student models.Student
 	if err := h.DB.Where("svv_email = ?", curr_user_mail).First(&student).Error; err != nil {
 		log.Printf("Failed to locate student to save courses for %s: %v", curr_user_mail, err)
@@ -186,6 +184,7 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 		"count":   len(courses),
 	})
 }
+
 
 // ──────────────────────────────────────────────
 //  GET /classroom/courses/{courseId}/assignments
@@ -387,7 +386,8 @@ func (h *Handler) HandleAIHelp(w http.ResponseWriter, r *http.Request) {
 
 	payloadBytes, _ := json.Marshal(ragPayload)
 
-	scraperURL := h.Config.SCRAPER_SERVICE_URL + "/rag/analyze"
+	// Use the new /rag/assignment-help endpoint for Q&A extraction
+	scraperURL := h.Config.SCRAPER_SERVICE_URL + "/rag/assignment-help"
 	log.Println("[CLASSROOM] Forwarding to RAG service:", scraperURL)
 
 	client := &http.Client{Timeout: 120 * time.Second}
@@ -404,6 +404,7 @@ func (h *Handler) HandleAIHelp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 }
+
 
 // ──────────────────────────────────────────────
 //  Internal helpers
@@ -426,6 +427,7 @@ type assignmentResponse struct {
 type materialResponse struct {
 	Title        string `json:"title"`
 	URL          string `json:"url"`
+	DownloadURL  string `json:"download_url"`
 	Type         string `json:"type"` // "driveFile", "link", "youtubeVideo", "form"
 	ThumbnailURL string `json:"thumbnail_url"`
 }
@@ -452,6 +454,7 @@ func fetchAssignments(svc *classroom.Service, courseID string) ([]assignmentResp
 			if m.DriveFile != nil && m.DriveFile.DriveFile != nil {
 				mat.Title = m.DriveFile.DriveFile.Title
 				mat.URL = m.DriveFile.DriveFile.AlternateLink
+				mat.DownloadURL = "https://www.googleapis.com/drive/v3/files/" + m.DriveFile.DriveFile.Id + "?alt=media"
 				mat.ThumbnailURL = m.DriveFile.DriveFile.ThumbnailUrl
 				mat.Type = "driveFile"
 			} else if m.Link != nil {

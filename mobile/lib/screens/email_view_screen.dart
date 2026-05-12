@@ -33,7 +33,7 @@ class EmailViewScreen extends StatelessWidget {
             // Top App Bar
             Container(
               height: 64,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
                 color: surfaceContainerLow,
                 border: Border(
@@ -54,48 +54,39 @@ class EmailViewScreen extends StatelessWidget {
                 ],
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: primary),
-                        onPressed: () => Navigator.pop(context),
-                        splashRadius: 24,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'CollegeBuddy',
-                          style: GoogleFonts.literata(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: primary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: primary),
+                    onPressed: () => Navigator.pop(context),
+                    splashRadius: 24,
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.archive_outlined, color: onSurfaceVariant),
-                        onPressed: () {},
-                        splashRadius: 24,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'CollegeBuddy',
+                      style: GoogleFonts.literata(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: primary,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: onSurfaceVariant),
-                        onPressed: () {},
-                        splashRadius: 24,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.more_vert, color: onSurfaceVariant),
-                        onPressed: () {},
-                        splashRadius: 24,
-                      ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.archive_outlined, color: onSurfaceVariant),
+                    onPressed: () {},
+                    splashRadius: 24,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: onSurfaceVariant),
+                    onPressed: () {},
+                    splashRadius: 24,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert, color: onSurfaceVariant),
+                    onPressed: () {},
+                    splashRadius: 24,
                   ),
                 ],
               ),
@@ -311,25 +302,29 @@ class EmailViewScreen extends StatelessWidget {
                                         size: 24,
                                       ),
                                       const SizedBox(width: 12),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            att.filename.isNotEmpty ? att.filename : 'Unnamed file',
-                                            style: GoogleFonts.literata(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: onSurface,
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              att.filename.isNotEmpty ? att.filename : 'Unnamed file',
+                                              style: GoogleFonts.literata(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: onSurface,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
-                                          Text(
-                                            'Attachment',
-                                            style: GoogleFonts.literata(
-                                              fontSize: 10,
-                                              color: onSurfaceVariant.withValues(alpha: 0.7),
+                                            Text(
+                                              'Attachment',
+                                              style: GoogleFonts.literata(
+                                                fontSize: 10,
+                                                color: onSurfaceVariant.withValues(alpha: 0.7),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),

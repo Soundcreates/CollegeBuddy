@@ -16,6 +16,14 @@ type Student struct {
 	Courses            []Course `json:"courses" gorm:"foreignKey:StudentID;constraint:OnDelete:CASCADE"`
 }
 
+type AssignmentAnswer struct {
+	ID         string  `json:"id" gorm:primaryKey`
+	StudentID  string  `json:"student_id" gorm:"index;column:student_id"`
+	Student    Student `json:"-" gorm:"foreignKey:StudentID`
+	CourseID   string  `json:"course_id" gorm:"index;column:course_id"`
+	Course     Course  `json:"-" gorm:"foreignKey:CourseID"`
+	AnswerText string  `json:"answer_text"`
+}
 type CourseResponse struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
@@ -35,7 +43,7 @@ type Course struct {
 	EnrollCode  string `json:"enroll_code"`
 	State       string `json:"state"`
 
-	StudentID string `json:"student_id" gorm:"index;column:student_id"`
+	StudentID string  `json:"student_id" gorm:"index;column:student_id"`
 	Student   Student `json:"-" gorm:"foreignKey:StudentID"`
 }
 

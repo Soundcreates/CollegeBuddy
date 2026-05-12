@@ -47,7 +47,7 @@ def retrieve_relevant_chunks(
     results = []
     for idx in top_indices:
         score = float(similarities[idx])
-        if score > 0.1:  # Minimum relevance threshold
+        if score > 0.0:  # Allow all chunks with positive similarity
             results.append((chunks[idx], score))
 
     logger.info(f"Retrieved {len(results)} relevant chunks (top_k={top_k})")
@@ -59,6 +59,13 @@ def build_context(chunks: List[str], query: str, max_context_length: int = 3000)
     Build a context string from the most relevant chunks.
     Truncates if the combined text exceeds max_context_length.
     """
+    # If the total length of all chunks is smaller than max_context_length,
+    # just return all chunks to avoid losing any context
+    total_length = sum(len(c) for c in chunks)
+    if total_length <= max_context_length:
+        logger.info(f"Total document length ({total_length}) is within max_context_length ({max_context_length}), using all chunks")
+        return "\n\n---\n\n".join(chunks)
+
     relevant = retrieve_relevant_chunks(chunks, query, top_k=8)
     
     context_parts = []

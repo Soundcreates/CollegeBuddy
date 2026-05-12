@@ -35,12 +35,14 @@ class CourseModel {
 class MaterialModel {
   final String title;
   final String url;
+  final String downloadUrl;
   final String type; // driveFile, link, youtubeVideo, form
   final String thumbnailUrl;
 
   MaterialModel({
     required this.title,
     required this.url,
+    this.downloadUrl = '',
     required this.type,
     this.thumbnailUrl = '',
   });
@@ -49,6 +51,7 @@ class MaterialModel {
     return MaterialModel(
       title: (json['title'] ?? '').toString(),
       url: (json['url'] ?? '').toString(),
+      downloadUrl: (json['download_url'] ?? '').toString(),
       type: (json['type'] ?? '').toString(),
       thumbnailUrl: (json['thumbnail_url'] ?? '').toString(),
     );
@@ -130,7 +133,10 @@ class AssignmentModel {
   /// Get the first Drive file material URL (usually the assignment template)
   String? get firstDriveFileUrl {
     final mat = materials.where((m) => m.isDriveFile).firstOrNull;
-    return mat?.url;
+    if (mat != null) {
+      return mat.downloadUrl.isNotEmpty ? mat.downloadUrl : mat.url;
+    }
+    return null;
   }
 }
 
@@ -153,24 +159,49 @@ class AIHelpResponse {
   final bool success;
   final String rawMarkdown;
   final List<AIHelpSection> sections;
+  final Map<String, String> questionsAnswers; // Q&A pairs from assignment help
   final String error;
 
   AIHelpResponse({
     required this.success,
     this.rawMarkdown = '',
     this.sections = const [],
+    this.questionsAnswers = const {},
     this.error = '',
   });
 
   factory AIHelpResponse.fromJson(Map<String, dynamic> json) {
-    final sectionsRaw = json['sections'] as List? ?? [];
+    // Parse sections safely
+    List<AIHelpSection> sections = [];
+    try {
+      final sectionsRaw = json['sections'] as List? ?? [];
+      sections = sectionsRaw
+          .map((s) => AIHelpSection.fromJson(Map<String, dynamic>.from(s as Map)))
+          .toList();
+    } catch (e) {
+      print('[AIHelpResponse] Error parsing sections: $e');
+    }
+
+    // Parse Q&A safely — values might not always be String
+    Map<String, String> qa = {};
+    try {
+      final qaRaw = json['questions_answers'] as Map? ?? {};
+      qaRaw.forEach((key, value) {
+        qa[key.toString()] = value.toString();
+      });
+    } catch (e) {
+      print('[AIHelpResponse] Error parsing questions_answers: $e');
+    }
+    
     return AIHelpResponse(
       success: json['success'] ?? false,
       rawMarkdown: (json['raw_markdown'] ?? '').toString(),
-      sections: sectionsRaw
-          .map((s) => AIHelpSection.fromJson(Map<String, dynamic>.from(s as Map)))
-          .toList(),
+      sections: sections,
+      questionsAnswers: qa,
       error: (json['error'] ?? '').toString(),
     );
   }
+
+  bool get hasQuestionsAnswers => questionsAnswers.isNotEmpty;
+  bool get hasSections => sections.isNotEmpty;
 }
