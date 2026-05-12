@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"somaiya-ext/internal/models"
 	"somaiya-ext/service"
 	"strings"
 	"time"
@@ -72,6 +73,45 @@ func (h *Handler) classroomClientForRequest(r *http.Request) (*classroom.Service
 func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	log.Println("[CLASSROOM] HandleListCourses called")
+	response_payload := make(map[string]interface{})
+	//handling query
+	refresh_val := r.URL.Query().Get("refresh")
+	if refresh_val == "" {
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		curr_user, err := h.BackendProfile(token)
+		if err != nil {
+			log.Printf("Failed to fetch backend profile: %v", err)
+			return
+		}
+		log.Println("Trying to fetch courses from db")
+		curr_user_mail := curr_user["user"].(map[string]interface{})["email"].(string)
+		var student models.Student
+		// Preload Courses association so we can return cached courses if present
+		if err := h.DB.Preload("Courses").Where("svv_email = ?", curr_user_mail).First(&student).Error; err != nil {
+			log.Printf("Failed to fetch classroom courses from DB for %s: %v", curr_user_mail, err)
+		} else {
+			log.Printf("Fetched student from db with ID = %s ; found %d courses", string(student.ID), len(student.Courses))
+			if len(student.Courses) > 0 {
+				cached := make([]models.CourseResponse, 0, len(student.Courses))
+				for _, sc := range student.Courses {
+					cached = append(cached, models.CourseResponse{
+						ID:          sc.ID,
+						Name:        sc.Name,
+						Section:     sc.Section,
+						Description: sc.Description,
+						Room:        sc.Room,
+						EnrollCode:  sc.EnrollCode,
+						State:       sc.State,
+					})
+				}
+				response_payload["success"] = true
+				response_payload["courses"] = cached
+				response_payload["count"] = len(cached)
+				json.NewEncoder(w).Encode(response_payload)
+				return
+			}
+		}
+	}
 
 	svc, _, err := h.classroomClientForRequest(r)
 	if err != nil {
@@ -80,6 +120,7 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("Fetching classroom courses from API")
 	resp, err := svc.Courses.List().CourseStates("ACTIVE").PageSize(50).Do()
 	if err != nil {
 		log.Println("[CLASSROOM] Failed to list courses:", err)
@@ -87,19 +128,9 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type courseResponse struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		Section     string `json:"section"`
-		Description string `json:"description"`
-		Room        string `json:"room"`
-		EnrollCode  string `json:"enroll_code"`
-		State       string `json:"state"`
-	}
-
-	courses := make([]courseResponse, 0, len(resp.Courses))
+	courses := make([]models.CourseResponse, 0, len(resp.Courses))
 	for _, c := range resp.Courses {
-		courses = append(courses, courseResponse{
+		courses = append(courses, models.CourseResponse{
 			ID:          c.Id,
 			Name:        c.Name,
 			Section:     c.Section,
@@ -108,6 +139,45 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 			EnrollCode:  c.EnrollmentCode,
 			State:       c.CourseState,
 		})
+	}
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	curr_user, err := h.BackendProfile(token)
+	if err != nil {
+		log.Printf("Failed to fetch backend profile: %v", err)
+		http.Error(w, "failed to fetch backend profile", http.StatusInternalServerError)
+		return
+	}
+	curr_user_mail := curr_user["user"].(map[string]interface{})["email"].(string)
+
+	// Persist courses as associated Course records for the student
+	var student models.Student
+	if err := h.DB.Where("svv_email = ?", curr_user_mail).First(&student).Error; err != nil {
+		log.Printf("Failed to locate student to save courses for %s: %v", curr_user_mail, err)
+	} else {
+		// Remove existing courses for the student and insert fresh ones
+		if err := h.DB.Where("student_id = ?", student.ID).Delete(&models.Course{}).Error; err != nil {
+			log.Printf("Failed to delete old courses for %s: %v", curr_user_mail, err)
+		}
+		courseModels := make([]models.Course, 0, len(courses))
+		for _, c := range courses {
+			courseModels = append(courseModels, models.Course{
+				ID:          c.ID,
+				Name:        c.Name,
+				Section:     c.Section,
+				Description: c.Description,
+				Room:        c.Room,
+				EnrollCode:  c.EnrollCode,
+				State:       c.State,
+				StudentID:   student.ID,
+			})
+		}
+		if len(courseModels) > 0 {
+			if err := h.DB.Create(&courseModels).Error; err != nil {
+				log.Printf("Failed to insert courses for %s: %v", curr_user_mail, err)
+			} else {
+				log.Println("Successfully stored courses for student", curr_user_mail)
+			}
+		}
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{

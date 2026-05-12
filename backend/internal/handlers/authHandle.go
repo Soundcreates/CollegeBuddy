@@ -119,6 +119,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userInfo := models.Student{
+		ID:                 googleUser.ID, // Set ID to Google user ID
 		Name:               googleUser.Name,
 		SVVEmail:           googleUser.Email,
 		ProfilePic:         googleUser.Picture,

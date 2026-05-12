@@ -8,13 +8,14 @@ import base64
 import io
 import logging
 
+from PyPDF2 import PdfReader
+
 logger = logging.getLogger(__name__)
 
 
 def extract_text_from_pdf_bytes(pdf_bytes: bytes) -> str:
     """Extract text from a PDF file given as raw bytes."""
     try:
-        from PyPDF2 import PdfReader
         reader = PdfReader(io.BytesIO(pdf_bytes))
         text_parts = []
         for page in reader.pages:
@@ -35,7 +36,7 @@ def load_document(
 ) -> str:
     """
     Load and combine all available document content into a single text string.
-    
+
     Priority:
     1. PDF file content (decoded from base64)
     2. Title + description text
@@ -54,7 +55,7 @@ def load_document(
     if file_content_base64:
         try:
             file_bytes = base64.b64decode(file_content_base64)
-            
+
             if file_content_type and "pdf" in file_content_type.lower():
                 pdf_text = extract_text_from_pdf_bytes(file_bytes)
                 if pdf_text:
@@ -77,3 +78,18 @@ def load_document(
     full_text = "\n\n".join(parts)
     logger.info(f"Document loaded: {len(full_text)} characters")
     return full_text
+
+
+def parse_topic(file_content_base64: str):
+    print("Parsing topic from base64 content...")
+    if "base64," in file_content_base64:
+        file_content_base64 = file_content_base64.split("base64,")[1]
+
+    pdfbytes = base64.b64decode(file_content_base64)
+    reader = PdfReader(io.BytesIO(pdfbytes))
+
+    text = []
+    for page in reader.pages:
+        text.append(page.extract_text() or "")
+
+    return "\n".join(text)
