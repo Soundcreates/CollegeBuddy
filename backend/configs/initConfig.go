@@ -42,7 +42,7 @@ func LoadConfig() *Config {
 
 	scraperURL := os.Getenv("SCRAPER_SERVICE_URL")
 	if scraperURL == "" {
-		scraperURL = "http://python:8000" // default for local dev
+		scraperURL = "https://collegebuddy-python.onrender.com"
 	}
 
 	cfg := &Config{

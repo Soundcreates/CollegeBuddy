@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:mobile/models/classroomModel.dart';
 
 class ClassroomApi extends ChangeNotifier {
-  final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev";
+  final String baseUrl = "https://collegebuddy-service.onrender.com";
   final FlutterSecureStorage storage = FlutterSecureStorage();
 
   bool _isLoadingCourses = false;

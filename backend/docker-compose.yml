@@ -50,7 +50,7 @@ services:
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
       EXTENSION_ID: ${EXTENSION_ID}
       DATABASE_URL: ${DATABASE_URL}
-      PYTHON_AI_SERVICE_URL: ${PYTHON_AI_SERVICE_URL:-http://python:8000/text-classification}
+      PYTHON_AI_SERVICE_URL: ${PYTHON_AI_SERVICE_URL:-https://collegebuddy-python.onrender.com/text-classification}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

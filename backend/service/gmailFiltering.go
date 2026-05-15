@@ -45,7 +45,7 @@ type FilterResponse struct {
 }
 
 const (
-	scraperServiceBaseURL = "http://python:8000" // Local Docker service name for scraperService
+	scraperServiceBaseURL = "https://collegebuddy-python.onrender.com"
 )
 
 // FilterEmails sends emails to AI filtration service and returns organized results

@@ -34,8 +34,7 @@ class AuthApi extends ChangeNotifier {
     });
   }
   
-  //we gon use ngrok for ts one
-  final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev";
+  final String baseUrl = "https://collegebuddy-service.onrender.com";
   Future<void> startGoogleOauth() async {
     // Encode device info in the state parameter
     print("Starting google auth");

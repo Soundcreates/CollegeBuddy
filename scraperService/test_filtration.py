@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Optional
 
 # Configuration
-BASE_URL = "http://localhost:8000"
+BASE_URL = "https://collegebuddy-python.onrender.com"
 ENDPOINT = "/filter-emails"
 TIMEOUT = 60
 

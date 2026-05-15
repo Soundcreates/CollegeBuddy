@@ -6,8 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 
 class MailApi extends ChangeNotifier {
-  // Local/public testing via ngrok
-  final String baseUrl = "https://kisha-volcanologic-motherly.ngrok-free.dev";
+  final String baseUrl = "https://collegebuddy-service.onrender.com";
   final FlutterSecureStorage storage = FlutterSecureStorage();
   bool _isFiltering = false;
   bool get isFiltering => _isFiltering;
