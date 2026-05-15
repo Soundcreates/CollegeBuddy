@@ -31,6 +31,55 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   static const Color primaryContainer = Color(0xFFD97552);
   static const Color onPrimary = Color(0xFF5C1900);
 
+  Uri? _toHttpUri(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return null;
+    final uri = Uri.tryParse(value);
+    if (uri == null) return null;
+    if (uri.scheme.isEmpty) {
+      return Uri.tryParse("https://$value");
+    }
+    if (uri.scheme == "http" || uri.scheme == "https") {
+      return uri;
+    }
+    return null;
+  }
+
+  Future<void> _openInGoogleClassroom(AssignmentModel assignment) async {
+    final candidates = <Uri>[
+      if (_toHttpUri(assignment.alternateLink) != null)
+        _toHttpUri(assignment.alternateLink)!,
+      for (final m in assignment.materials)
+        if (_toHttpUri(m.url) != null) _toHttpUri(m.url)!,
+    ];
+
+    final fallbackUri = Uri.parse("https://classroom.google.com");
+    final urisToTry = <Uri>[...candidates, fallbackUri];
+
+    for (final uri in urisToTry) {
+      final openedExternal = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (openedExternal) return;
+
+      final openedBrowser = await launchUrl(
+        uri,
+        mode: LaunchMode.inAppBrowserView,
+      );
+      if (openedBrowser) return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open Google Classroom.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final a = widget.assignment;
@@ -197,18 +246,13 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                   ),
 
                   // Open in Classroom button
-                  if (a.alternateLink.isNotEmpty) ...[
+                  if (a.alternateLink.isNotEmpty ||
+                      a.materials.any((m) => m.url.trim().isNotEmpty)) ...[
                     const SizedBox(height: 12),
                     FadeInUp(
                       delay: const Duration(milliseconds: 300),
                       child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final uri = Uri.parse(a.alternateLink);
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
-                          }
-                        },
+                        onPressed: () => _openInGoogleClassroom(a),
                         icon: const Icon(Icons.open_in_new_rounded, size: 18),
                         label: Text(
                           'Open in Google Classroom',

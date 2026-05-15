@@ -25,7 +25,7 @@ type userGmailKey string
 const user_gmail userGmailKey = "user_gmail"
 
 func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
-	redirect_url := fmt.Sprintf(h.Config.BACKEND_URL + "/api/auth/google/callback")
+	redirect_url := h.Config.BACKEND_URL + "/api/auth/google/callback"
 	return &oauth2.Config{
 		ClientID:     h.Config.OAUTH_CLIENT_ID,
 		ClientSecret: h.Config.OAUTH_CLIENT_SECRET,
@@ -38,6 +38,7 @@ func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
 			"https://www.googleapis.com/auth/classroom.courses.readonly",
 			"https://www.googleapis.com/auth/classroom.coursework.me",
 			"https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
+			"https://www.googleapis.com/auth/drive.readonly",
 		},
 		Endpoint: google.Endpoint,
 	}
@@ -66,7 +67,7 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("OAuth callback received. State: %s, Device: %s", state)
+	log.Printf("OAuth callback received. State: %s", state)
 	//this is the code
 	code := r.FormValue("code")
 	if code == "" {

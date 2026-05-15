@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 def run_rag_pipeline(
     title: str = "",
     description: str = "",
+    file_url: str = "",
+    file_access_token: str = "",
     file_content_base64: str = "",
     file_content_type: str = "",
 ) -> dict:
@@ -34,6 +36,8 @@ def run_rag_pipeline(
     Args:
         title: Assignment title
         description: Assignment description text
+        file_url: Direct URL for assignment file download
+        file_access_token: Optional bearer token for protected file URL
         file_content_base64: Base64-encoded file (usually PDF)
         file_content_type: MIME type of the file
         
@@ -46,6 +50,8 @@ def run_rag_pipeline(
     full_text = load_document(
         title=title,
         description=description,
+        file_url=file_url,
+        file_access_token=file_access_token,
         file_content_base64=file_content_base64,
         file_content_type=file_content_type,
     )
@@ -87,6 +93,8 @@ def run_rag_pipeline(
 def extract_questions_and_answers(
     title: str = "",
     description: str = "",
+    file_url: str = "",
+    file_access_token: str = "",
     file_content_base64: str = "",
     file_content_type: str = "",
 ) -> dict:
@@ -102,6 +110,8 @@ def extract_questions_and_answers(
     Args:
         title: Assignment title
         description: Assignment description text
+        file_url: Direct URL for assignment file download
+        file_access_token: Optional bearer token for protected file URL
         file_content_base64: Base64-encoded file (usually PDF)
         file_content_type: MIME type of the file
         
@@ -114,6 +124,8 @@ def extract_questions_and_answers(
     full_text = load_document(
         title=title,
         description=description,
+        file_url=file_url,
+        file_access_token=file_access_token,
         file_content_base64=file_content_base64,
         file_content_type=file_content_type,
     )
@@ -122,7 +134,8 @@ def extract_questions_and_answers(
         logger.warning("No document content available for question extraction")
         # Try to generate from title/description anyway
         result = extract_and_answer_questions(
-            context="",
+            extraction_context="",
+            answer_context="",
             title=title,
             description=description,
         )
@@ -132,21 +145,30 @@ def extract_questions_and_answers(
     chunks = chunk_by_sections(full_text)
     logger.info(f"Document chunked into {len(chunks)} pieces")
 
-    # Step 3: Build retrieval context
-    query = f"{title}. {description}" if description else title
-    if not query.strip():
-        query = "What are the questions in this assignment?"
+    # Step 3: Build contexts for extraction and answering.
+    # Use broad full-text for extraction (so we don't miss questions),
+    # then focused retrieval context for concise, relevant answers.
+    extraction_context = full_text[:24000]
 
-    context = build_context(chunks, query, max_context_length=6000)
-    logger.info(f"Built context: {len(context)} characters from {len(chunks)} chunks")
+    answer_query = (
+        f"{title}. {description}. Extract and answer all assignment questions, tasks, prompts, "
+        "titles, and key concepts."
+    ).strip()
+    if not answer_query.strip():
+        answer_query = "What are all questions and tasks in this assignment, and how should each be answered?"
+
+    answer_context = build_context(chunks, answer_query, max_context_length=12000)
+    logger.info(
+        f"Built contexts: extraction={len(extraction_context)} chars, answer={len(answer_context)} chars from {len(chunks)} chunks"
+    )
 
     # Step 4: Extract questions and generate answers
     result = extract_and_answer_questions(
-        context=context,
+        extraction_context=extraction_context,
+        answer_context=answer_context,
         title=title,
         description=description,
     )
 
     logger.info(f"Question extraction completed. Success: {result.get('success', False)}")
     return result
-

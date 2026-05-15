@@ -127,7 +127,12 @@ Structure it as clear headers with bullet points under each."""
         }
 
 
-def extract_and_answer_questions(context: str, title: str = "", description: str = "") -> dict:
+def extract_and_answer_questions(
+    extraction_context: str,
+    answer_context: str = "",
+    title: str = "",
+    description: str = "",
+) -> dict:
     """
     Extract questions from an assignment and generate detailed answers.
     Uses a two-stage approach:
@@ -135,7 +140,8 @@ def extract_and_answer_questions(context: str, title: str = "", description: str
     2. Then generate detailed answers for each question
     
     Args:
-        context: Retrieved relevant text chunks containing assignment content
+        extraction_context: Broad document text used to extract all prompts/questions
+        answer_context: Focused context used for answer generation
         title: Assignment title
         description: Assignment description
         
@@ -159,36 +165,43 @@ Assignment Title: {title}
 Description: {description if description else 'Not provided'}
 
 Document Content:
-{context if context else 'No document content available'}
+{extraction_context if extraction_context else 'No document content available'}
 
 Instructions:
-- Extract every question, task, or prompt from the document
+- CRITICAL: If the document contains a section named 'Post Lab Objective Questions' (or similar like 'Post Lab Questions'), you MUST extract all questions from that section. Prioritize these over general tasks.
+- Extract every question, task, prompt, section title, and concept that looks like
+  something the student must cover or answer
 - If there are numbered questions, extract them exactly as stated
 - If the assignment describes tasks (e.g., "Write a program to...", "Explain...", "Discuss..."), treat each task as a question
 - If no explicit questions exist, infer 3-5 key questions based on the title and description
-- Return ONLY a JSON array of strings, each string being one question/task
+- Return ONLY JSON in this exact shape:
+  {{
+    "document_titles": ["..."],
+    "core_concepts": ["..."],
+    "questions": ["..."]
+  }}
 - Do NOT include any other text, markdown, or explanation
-
-Example output:
-["What is the difference between TCP and UDP?", "Explain the OSI model layers.", "Write a program to implement bubble sort."]"""
+"""
 
     try:
         # Stage 1: Extract questions
         extraction_response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You extract questions from academic documents. Return ONLY a valid JSON array of question strings. No other text."},
+                {"role": "system", "content": "You extract assignment structure from academic documents. Return ONLY a valid JSON object with keys: document_titles, core_concepts, questions."},
                 {"role": "user", "content": extraction_prompt},
             ],
             temperature=0.3,
-            max_tokens=1024,
+            max_tokens=1800,
         )
 
-        questions_raw = extraction_response.choices[0].message.content.strip()
-        logger.info(f"Extracted questions raw: {questions_raw[:200]}")
+        extraction_raw = extraction_response.choices[0].message.content.strip()
+        logger.info(f"Extracted structure raw: {extraction_raw[:200]}")
 
-        # Parse the questions from the response
-        questions = _parse_questions_list(questions_raw)
+        parsed = _parse_assignment_structure(extraction_raw)
+        questions = parsed.get("questions", [])
+        core_concepts = parsed.get("core_concepts", [])
+        document_titles = parsed.get("document_titles", [])
         
         if not questions:
             # Fallback: generate questions from title/description
@@ -203,7 +216,9 @@ Example output:
         qa_prompt = f"""You are an academic assistant. Answer the following questions based on the assignment context provided.
 
 Assignment: {title}
-Context: {context if context else description if description else 'Use your knowledge to answer.'}
+Document Titles/Sections: {", ".join(document_titles) if document_titles else "Not explicitly identified"}
+Core Concepts: {", ".join(core_concepts) if core_concepts else "Not explicitly identified"}
+Context: {answer_context if answer_context else extraction_context if extraction_context else description if description else 'Use your knowledge to answer.'}
 
 Questions to answer:
 {chr(10).join(f'{i+1}. {q}' for i, q in enumerate(questions))}
@@ -245,6 +260,8 @@ Repeat for each question. Use EXACTLY "QUESTION:" and "ANSWER:" prefixes."""
         return {
             "success": True,
             "questions_answers": questions_answers,
+            "document_titles": document_titles,
+            "core_concepts": core_concepts,
         }
 
     except Exception as e:
@@ -285,6 +302,48 @@ def _parse_questions_list(text: str) -> list:
             questions.append(cleaned)
     
     return questions
+
+
+def _parse_assignment_structure(text: str) -> dict:
+    """
+    Parse assignment structure JSON from LLM output.
+    Returns keys: document_titles, core_concepts, questions.
+    """
+    parsed = {
+        "document_titles": [],
+        "core_concepts": [],
+        "questions": [],
+    }
+
+    if not text.strip():
+        return parsed
+
+    try:
+        # Try full object parse first
+        obj = json.loads(text)
+    except Exception:
+        obj = None
+
+    if obj is None:
+        # Try to locate a JSON object in noisy output
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            try:
+                obj = json.loads(match.group())
+            except Exception:
+                obj = None
+
+    if isinstance(obj, dict):
+        for key in parsed.keys():
+            raw = obj.get(key, [])
+            if isinstance(raw, list):
+                parsed[key] = [str(v).strip() for v in raw if str(v).strip()]
+        if parsed["questions"]:
+            return parsed
+
+    # Last-resort fallback: infer questions from line parsing
+    parsed["questions"] = _parse_questions_list(text)
+    return parsed
 
 
 def parse_qa_pairs(text: str, original_questions: list = None) -> dict:

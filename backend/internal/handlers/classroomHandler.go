@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -74,10 +73,10 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	log.Println("[CLASSROOM] HandleListCourses called")
 	response_payload := make(map[string]interface{})
-	
+
 	// Extract token once at the start
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	
+
 	// Fetch profile once
 	curr_user, err := h.BackendProfile(token)
 	if err != nil {
@@ -86,7 +85,7 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	curr_user_mail := curr_user["user"].(map[string]interface{})["email"].(string)
-	
+
 	// Check if refresh param is set
 	refresh_val := r.URL.Query().Get("refresh")
 	if refresh_val == "" {
@@ -184,7 +183,6 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 		"count":   len(courses),
 	})
 }
-
 
 // ──────────────────────────────────────────────
 //  GET /classroom/courses/{courseId}/assignments
@@ -306,17 +304,32 @@ func (h *Handler) HandleGetAttachment(w http.ResponseWriter, r *http.Request) {
 
 	studentData, _ := profile["user"].(map[string]interface{})
 	accessToken, _ := studentData["o_access_token"].(string)
+	refreshToken, _ := studentData["o_refresh_token"].(string)
 
 	_ = email // used for logging only
 
-	// Download the file with the user's OAuth access token
-	client := &http.Client{Timeout: 60 * time.Second}
+	if accessToken == "" || refreshToken == "" {
+		http.Error(w, "google oauth token missing; please reconnect Google account", http.StatusUnauthorized)
+		return
+	}
+
+	// Download using auto-refreshing OAuth client so expired tokens don't break downloads
+	client := service.GoogleHTTPClientFromStoredToken(
+		r.Context(),
+		h.Config.OAUTH_CLIENT_ID,
+		h.Config.OAUTH_CLIENT_SECRET,
+		accessToken,
+		refreshToken,
+		email,
+		h.DB,
+	)
+	client.Timeout = 60 * time.Second
+
 	req, err := http.NewRequest("GET", downloadURL, nil)
 	if err != nil {
 		http.Error(w, "failed to create request", http.StatusInternalServerError)
 		return
 	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -359,26 +372,17 @@ func (h *Handler) HandleAIHelp(w http.ResponseWriter, r *http.Request) {
 		"file_url":    requestBody.FileURL,
 	}
 
-	// If there's a file URL, download it first and pass raw content
+	// If there's a file URL, pass user's Google access token to RAG so
+	// the RAG service can directly fetch and parse the attachment.
 	if requestBody.FileURL != "" {
-		// Get the user's access token to download the file
+		// Get the user's access token for the RAG service download step
 		authHeader := r.Header.Get("Authorization")
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		profile, err := h.BackendProfile(token)
 		if err == nil {
 			if studentData, ok := profile["user"].(map[string]interface{}); ok {
 				if accessToken, ok := studentData["o_access_token"].(string); ok {
-					client := &http.Client{Timeout: 30 * time.Second}
-					req, _ := http.NewRequest("GET", requestBody.FileURL, nil)
-					req.Header.Set("Authorization", "Bearer "+accessToken)
-					resp, err := client.Do(req)
-					if err == nil {
-						defer resp.Body.Close()
-						fileBytes, _ := io.ReadAll(resp.Body)
-						// Base64 encode the file content for the RAG service
-						ragPayload["file_content_base64"] = fmt.Sprintf("%s", encodeBase64(fileBytes))
-						ragPayload["file_content_type"] = resp.Header.Get("Content-Type")
-					}
+					ragPayload["file_access_token"] = accessToken
 				}
 			}
 		}
@@ -404,7 +408,6 @@ func (h *Handler) HandleAIHelp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 }
-
 
 // ──────────────────────────────────────────────
 //  Internal helpers
@@ -494,8 +497,4 @@ func fetchAssignments(svc *classroom.Service, courseID string) ([]assignmentResp
 	}
 
 	return assignments, nil
-}
-
-func encodeBase64(data []byte) string {
-	return base64.StdEncoding.EncodeToString(data)
 }

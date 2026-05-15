@@ -20,6 +20,7 @@ class AnalyzeRequest(BaseModel):
     title: str = ""
     description: str = ""
     file_url: Optional[str] = ""
+    file_access_token: Optional[str] = ""
     file_content_base64: Optional[str] = ""
     file_content_type: Optional[str] = ""
 
@@ -39,6 +40,8 @@ class AnalyzeResponse(BaseModel):
 class AssignmentHelpResponse(BaseModel):
     success: bool
     questions_answers: dict = {}  # {question: answer}
+    document_titles: list[str] = []
+    core_concepts: list[str] = []
     error: str = ""
 
 
@@ -50,7 +53,9 @@ async def analyze_assignment(request: AnalyzeRequest) -> AnalyzeResponse:
     Accepts:
     - title: Assignment title
     - description: Assignment description
-    - file_content_base64: Base64-encoded PDF content (sent by Go backend)
+    - file_url: URL to an assignment file (downloaded by the RAG service)
+    - file_access_token: Optional bearer token for protected file URLs
+    - file_content_base64: Base64-encoded file content (legacy fallback)
     - file_content_type: MIME type of the file
     
     Returns:
@@ -58,16 +63,18 @@ async def analyze_assignment(request: AnalyzeRequest) -> AnalyzeResponse:
     """
     logger.info(f"RAG analyze request: title='{request.title}'")
 
-    if not request.title and not request.description and not request.file_content_base64:
+    if not request.title and not request.description and not request.file_url and not request.file_content_base64:
         raise HTTPException(
             status_code=400,
-            detail="At least one of title, description, or file_content_base64 is required",
+            detail="At least one of title, description, file_url, or file_content_base64 is required",
         )
 
     try:
         result = run_rag_pipeline(
             title=request.title,
             description=request.description,
+            file_url=request.file_url or "",
+            file_access_token=request.file_access_token or "",
             file_content_base64=request.file_content_base64 or "",
             file_content_type=request.file_content_type or "",
         )
@@ -97,7 +104,9 @@ async def get_assignment_help(request: AnalyzeRequest) -> AssignmentHelpResponse
     Accepts:
     - title: Assignment title
     - description: Assignment description
-    - file_content_base64: Base64-encoded PDF content
+    - file_url: URL to an assignment file (downloaded by the RAG service)
+    - file_access_token: Optional bearer token for protected file URLs
+    - file_content_base64: Base64-encoded file content (legacy fallback)
     - file_content_type: MIME type of the file
     
     Returns:
@@ -105,16 +114,18 @@ async def get_assignment_help(request: AnalyzeRequest) -> AssignmentHelpResponse
     """
     logger.info(f"Assignment help request: title='{request.title}'")
 
-    if not request.title and not request.description and not request.file_content_base64:
+    if not request.title and not request.description and not request.file_url and not request.file_content_base64:
         raise HTTPException(
             status_code=400,
-            detail="At least one of title, description, or file_content_base64 is required",
+            detail="At least one of title, description, file_url, or file_content_base64 is required",
         )
 
     try:
         result = extract_questions_and_answers(
             title=request.title,
             description=request.description,
+            file_url=request.file_url or "",
+            file_access_token=request.file_access_token or "",
             file_content_base64=request.file_content_base64 or "",
             file_content_type=request.file_content_type or "",
         )
@@ -122,10 +133,11 @@ async def get_assignment_help(request: AnalyzeRequest) -> AssignmentHelpResponse
         return AssignmentHelpResponse(
             success=result.get("success", False),
             questions_answers=result.get("questions_answers", {}),
+            document_titles=result.get("document_titles", []),
+            core_concepts=result.get("core_concepts", []),
             error=result.get("error", ""),
         )
 
     except Exception as e:
         logger.exception("Assignment help error")
         raise HTTPException(status_code=500, detail=str(e))
-
