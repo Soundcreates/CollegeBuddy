@@ -120,7 +120,6 @@ class _ClassroomScreenState extends State<ClassroomScreen>
                 ],
               ),
             ),
-            _buildBottomNav(),
           ],
         ),
       ),
@@ -154,13 +153,7 @@ class _ClassroomScreenState extends State<ClassroomScreen>
         children: [
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new,
-                    color: primary, size: 20),
-                onPressed: () => Navigator.pop(context),
-                splashRadius: 24,
-              ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -686,88 +679,6 @@ class _ClassroomScreenState extends State<ClassroomScreen>
                   color: onSurfaceVariant.withOpacity(0.6),
                   fontWeight: FontWeight.w400,
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Bottom Navigation ───
-  Widget _buildBottomNav() {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: surfaceContainerLowest,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Expanded(
-              child: _buildNavItem(Icons.mail, 'Inbox', false,
-                  Colors.transparent, onSurfaceVariant, onTap: () {
-            Navigator.pop(context);
-          })),
-          Expanded(
-              child: _buildNavItem(Icons.school, 'Classroom', true,
-                  secondaryContainer, onSecondaryContainer)),
-          Expanded(
-              child: _buildNavItem(Icons.inventory_2, 'Archive', false,
-                  Colors.transparent, onSurfaceVariant)),
-          Expanded(
-              child: _buildNavItem(Icons.settings, 'Settings', false,
-                  Colors.transparent, onSurfaceVariant, onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()));
-          })),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive,
-      Color activeBgColor, Color activeFgColor,
-      {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? activeBgColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                color: isActive
-                    ? activeFgColor
-                    : activeFgColor.withOpacity(0.7)),
-            const SizedBox(height: 4),
-            Flexible(
-              child: Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  color: isActive
-                      ? activeFgColor
-                      : activeFgColor.withOpacity(0.7),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

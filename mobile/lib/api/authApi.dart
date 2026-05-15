@@ -30,7 +30,7 @@ class AuthApi extends ChangeNotifier {
 
       await storage.write(key: "user_email", value: userEmail);
       print("Tokens and user email stored securely");
-      Navigator.of(context).pushReplacementNamed("/dashboard");
+      Navigator.of(context).pushReplacementNamed("/main");
     });
   }
   

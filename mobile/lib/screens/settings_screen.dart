@@ -373,38 +373,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
-
-                // Bottom Navigation Bar
-                Container(
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: surfaceContainerLowest,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, -4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Expanded(child: _buildNavItem(Icons.mail, 'Inbox', false, Colors.transparent, onSurfaceVariant, onTap: () {
-                        Navigator.pop(context); // Go back to dashboard
-                      })),
-                      Expanded(child: _buildNavItem(Icons.school, 'Classroom', false, Colors.transparent, onSurfaceVariant, onTap: () {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ClassroomScreen()));
-                      })),
-                      Expanded(child: _buildNavItem(Icons.inventory_2, 'Archive', false, Colors.transparent, onSurfaceVariant)),
-                      Expanded(child: _buildNavItem(Icons.settings, 'Settings', true, secondaryContainer, onSecondaryContainer)),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -464,41 +432,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           Icon(Icons.chevron_right, color: outline),
         ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, Color activeBgColor, Color activeFgColor, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? activeBgColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? activeFgColor : activeFgColor.withOpacity(0.7),
-            ),
-            const SizedBox(height: 4),
-            Flexible(
-              child: Text(
-                label,
-                style: GoogleFonts.literata(
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                  color: isActive ? activeFgColor : activeFgColor.withValues(alpha: 0.7),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

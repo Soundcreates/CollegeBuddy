@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import 'screens/loading_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/main_screen.dart';
 import 'screens/classroom_screen.dart';
 import "package:mobile/api/mailApi.dart";
+import 'screens/settings_screen.dart';
 
 
 void main() {
@@ -43,8 +45,10 @@ class CollegeBuddyApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoadingScreen(),
         '/login': (context) => const LoginScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
+        '/main': (context) => const MainScreen(),
+        '/dashboard': (context) => const MainScreen(), // Legacy support
         '/classroom': (context) => const ClassroomScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }

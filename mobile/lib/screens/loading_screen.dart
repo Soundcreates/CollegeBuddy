@@ -31,7 +31,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     print("user: $user");
     Navigator.pushReplacementNamed(
       context,
-      user != null ? '/dashboard' : '/login',
+      user != null ? '/main' : '/login',
       arguments: user,
     );
   }
