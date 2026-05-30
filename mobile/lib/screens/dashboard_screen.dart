@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:mobile/api/mailApi.dart';
 import 'email_view_screen.dart';
-import 'package:mobile/screens/settings_screen.dart';
-import 'package:mobile/screens/classroom_screen.dart';
 import "package:mobile/models/userModel.dart";
 import "package:mobile/models/mailModel.dart";
 import "package:mobile/cache/BigDataRepository.dart";
@@ -21,10 +17,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late Future<List<dynamic>> _loadedData;
   bool _hasInitialized = false;
   final BigDataRepository mailRepo = BigDataRepository();
-  final MailApi mail_fetcher = MailApi();
   bool _isRefreshing = false;
-  List<MailModel> _streamedMails = [];
-  bool _streamLoading = false;
+  List<MailModel> _refreshedMails = [];
 
   @override
   void initState() {
@@ -33,38 +27,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _initializeOnce();
   }
 
-  Future<void> _testFetchMails() async {
+  Future<void> _refreshInbox() async {
     setState(() => _isRefreshing = true);
     try {
-      print("[TEST] Manual mail fetch triggered");
-      mailRepo.clearMailCache();
-      setState(() {
-        _streamLoading = true;
-        _streamedMails = [];
-      });
-
-      await for (final mails in mail_fetcher.streamFilteredMails(minBatchToEmit: 5)) {
-        if (!mounted) break;
-        setState(() {
-          _streamedMails = mails;
-        });
-      }
-
-      if (mounted) {
-        setState(() => _streamLoading = false);
-      }
-
-      print("[TEST] Stream fetch completed: ${_streamedMails.length} mails");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fetched ${_streamedMails.length} mails'), duration: const Duration(seconds: 2)),
-        );
-      }
+      print("[DASHBOARD] Refresh inbox triggered");
+      final mails = await mailRepo.refreshInbox();
+      if (!mounted) return;
+      setState(() => _refreshedMails = mails);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Inbox refreshed — ${mails.length} messages'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } catch (e) {
-      print("[TEST] Manual fetch error: $e");
+      print("[DASHBOARD] Refresh inbox error: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), duration: const Duration(seconds: 2)),
+          SnackBar(content: Text('Refresh failed: $e'), duration: const Duration(seconds: 2)),
         );
       }
     } finally {
@@ -150,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         final user = snapshot.data![0] as UserModel? ?? null;
         final cachedMails = snapshot.data![1] as List<MailModel>? ?? [];
-        final mails = _streamedMails.isNotEmpty ? _streamedMails : cachedMails;
+        final mails = _refreshedMails.isNotEmpty ? _refreshedMails : cachedMails;
         if(user == null){
           WidgetsBinding.instance.addPostFrameCallback((_) {
               Future.delayed(const Duration(seconds: 2), () {
@@ -326,34 +306,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Test Fetch Button
                       SizedBox(
                         height: 36,
-                        child: ElevatedButton(
-                          onPressed: _isRefreshing ? null : _testFetchMails,
+                        child: ElevatedButton.icon(
+                          onPressed: _isRefreshing ? null : _refreshInbox,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: surfaceContainerLow,
                             foregroundColor: primary,
                             side: BorderSide(color: outlineVariant.withOpacity(0.3)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: _isRefreshing
+                          icon: _isRefreshing
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(primary)),
                                 )
-                              : Text('Test Fetch Mails', style: GoogleFonts.literata(fontSize: 14)),
+                              : const Icon(Icons.refresh, size: 16),
+                          label: Text('Refresh Inbox', style: GoogleFonts.literata(fontSize: 14)),
                         ),
                       ),
                       const SizedBox(height: 20),
-                      if (_streamLoading) ...[
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "Loading...",
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
 
                       // Inbox List
                       if (mails.isEmpty)

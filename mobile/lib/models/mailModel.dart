@@ -36,6 +36,17 @@ class MailModel {
           [],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'subject': subject,
+        'from': from,
+        'to': to,
+        'date': date,
+        'snippet': snippet,
+        'body': body,
+        'attachments': attachments.map((a) => a.toJson()).toList(),
+      };
 }
 
 class AttachmentModel {
@@ -56,4 +67,10 @@ class AttachmentModel {
       attachmentId: json["attachmentId"] ?? json["attatchment_id"] ?? json["attachment_id"] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'filename': filename,
+        'mimeType': mimeType,
+        'attachmentId': attachmentId,
+      };
 }

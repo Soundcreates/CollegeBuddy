@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"somaiya-ext/internal/models"
 	"time"
 
@@ -37,7 +39,7 @@ func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID
 	config := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		RedirectURL:  "https://collegebuddy-service.onrender.com/api/auth/google/callback",
+		RedirectURL:  fmt.Sprintf("%s/api/auth/google/callback", os.Getenv("BACKEND_URL")),
 		Scopes: []string{
 			"https://www.googleapis.com/auth/gmail.readonly",
 			"https://www.googleapis.com/auth/gmail.modify",

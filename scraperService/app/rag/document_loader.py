@@ -327,36 +327,67 @@ def load_document(
     Load and combine all available document content into a single text string.
 
     Priority:
-    1. File downloaded from file_url
-    2. PDF/base64 file content
-    3. Title + description text
+    1. Base64 file content (pre-downloaded by backend with fresh OAuth token)
+    2. File downloaded from file_url (fallback when base64 unavailable)
+    3. Title + description only (last resort — questions will be generic)
     """
     parts = []
+    document_content_loaded = False
 
-    # Add title context
     if title:
         parts.append(f"Assignment Title: {title}")
-
-    # Add description context
     if description:
         parts.append(f"Assignment Description:\n{description}")
 
-    # Download and extract file content from URL if provided
-    if file_url:
+    # ── Primary path: base64 bytes sent by backend ──
+    # The backend downloads the file using a token-refreshing OAuth client,
+    # so the bytes are always from a valid authenticated request.
+    if file_content_base64:
         try:
-            # First try deterministic Drive API download path when possible.
+            file_bytes = base64.b64decode(file_content_base64)
+            logger.info(
+                "Decoding base64 file: %d bytes, declared content_type=%s, is_pdf=%s, is_docx=%s, is_html=%s",
+                len(file_bytes),
+                file_content_type,
+                _is_likely_pdf(file_bytes),
+                _is_likely_docx(file_bytes),
+                _is_html_content(file_bytes),
+            )
+            extracted = _extract_text_from_file_bytes(file_bytes, file_content_type)
+            if extracted:
+                logger.info("Base64 content extracted successfully: %d chars", len(extracted))
+                parts.append(f"Document Content:\n{extracted}")
+                document_content_loaded = True
+            else:
+                logger.error(
+                    "Base64 file extraction returned EMPTY TEXT — "
+                    "content_type=%s, first 100 bytes=%r",
+                    file_content_type,
+                    file_bytes[:100],
+                )
+        except Exception as e:
+            logger.error("Failed to decode/parse base64 file content: %s", e)
+
+    # ── Fallback path: download from URL (token may be expired) ──
+    if not document_content_loaded and file_url:
+        logger.info("No base64 content; attempting URL download: %s", file_url)
+        try:
             file_bytes, downloaded_content_type = _download_via_drive_api(
                 file_url=file_url,
                 file_access_token=file_access_token,
             )
             if not file_bytes:
+                logger.warning(
+                    "Drive API download returned empty bytes "
+                    "(token may be expired); trying direct URL fetch"
+                )
                 file_bytes, downloaded_content_type = _download_file_from_url(
                     file_url=file_url,
                     file_access_token=file_access_token,
                 )
 
             logger.info(
-                "Downloaded file: %d bytes, content_type=%s, is_pdf=%s, is_html=%s",
+                "URL download result: %d bytes, content_type=%s, is_pdf=%s, is_html=%s",
                 len(file_bytes),
                 downloaded_content_type,
                 _is_likely_pdf(file_bytes),
@@ -367,8 +398,8 @@ def load_document(
                 file_bytes=file_bytes,
                 content_type=downloaded_content_type or file_content_type,
             )
-            # If primary fetch cannot be parsed, try Drive export flow for Google-native docs.
             if not extracted:
+                # Last attempt: Google-native export (Docs/Sheets/Slides)
                 export_bytes, export_content_type = _download_google_native_export_if_needed(
                     file_url=file_url,
                     file_access_token=file_access_token,
@@ -377,26 +408,27 @@ def load_document(
                     extracted = _extract_text_from_file_bytes(export_bytes, export_content_type)
 
             if extracted:
+                logger.info("URL content extracted successfully: %d chars", len(extracted))
                 parts.append(f"Document Content:\n{extracted}")
+                document_content_loaded = True
             else:
-                logger.warning("File URL extraction returned empty text")
+                logger.error(
+                    "URL file extraction returned EMPTY TEXT — "
+                    "the access token is likely expired or the file is inaccessible. "
+                    "Questions will be generated from title/description only."
+                )
         except Exception as e:
-            logger.error(f"Failed to download or parse file from URL: {e}")
+            logger.error("Failed to download or parse file from URL: %s", e)
 
-    # Decode and extract file content if provided (legacy fallback)
-    if file_content_base64:
-        try:
-            file_bytes = base64.b64decode(file_content_base64)
-            extracted = _extract_text_from_file_bytes(file_bytes, file_content_type)
-            if extracted:
-                parts.append(f"Document Content:\n{extracted}")
-            else:
-                logger.warning("Base64 file extraction returned empty text")
-        except Exception as e:
-            logger.error(f"Failed to decode file content: {e}")
+    if not document_content_loaded:
+        logger.warning(
+            "NO document content loaded for title=%r — "
+            "RAG will generate questions from metadata only, results may be inaccurate.",
+            title,
+        )
 
     full_text = "\n\n".join(parts)
-    logger.info(f"Document loaded: {len(full_text)} characters")
+    logger.info("Document loaded: %d total chars, document_content_loaded=%s", len(full_text), document_content_loaded)
     return full_text
 
 

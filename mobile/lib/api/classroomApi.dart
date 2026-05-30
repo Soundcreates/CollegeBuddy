@@ -5,9 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:mobile/models/classroomModel.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ClassroomApi extends ChangeNotifier {
-  final String baseUrl = "https://collegebuddy-service.onrender.com";
+  late final String baseUrl;
+
+  ClassroomApi() {
+    baseUrl = dotenv.env['API_URL'] ?? "https://kisha-volcanologic-motherly.ngrok-free.dev";
+  }
   final FlutterSecureStorage storage = FlutterSecureStorage();
 
   bool _isLoadingCourses = false;

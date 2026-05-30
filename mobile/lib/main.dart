@@ -9,9 +9,10 @@ import 'screens/main_screen.dart';
 import 'screens/classroom_screen.dart';
 import "package:mobile/api/mailApi.dart";
 import 'screens/settings_screen.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() {
+  dotenv.load();
   runApp(
     MultiProvider(
       providers: [

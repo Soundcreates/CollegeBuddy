@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Attatchment struct {
 	Filename      string `json:"filename"`
 	MimeType      string `json:"mimeType"`
@@ -17,4 +19,6 @@ type GmailMessage struct {
 	Snippet      string        `json:"snippet"` // Not stored in DB
 	Body         string        `json:"body"`    // Not stored in DB
 	Attatchments []Attatchment `json:"attachments" gorm:"-"`
+	// CreatedAt is managed by GORM autoCreateTime; existing rows get zero time.
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 }

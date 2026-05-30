@@ -37,6 +37,18 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.configureEach {
+            // Cast to BaseVariantOutputImpl to access outputFileName in Kotlin DSL
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+
+            val versionName = variant.versionName ?: "1.0.0"
+            val appName = "CollegeBuddy"
+
+            output.outputFileName = "${appName}-v${versionName}-${variant.name}.apk"
+        }
+    }
 }
 
 flutter {

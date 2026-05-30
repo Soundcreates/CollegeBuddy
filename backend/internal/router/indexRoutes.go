@@ -26,5 +26,7 @@ func RegisterRoutes(h *handler.Handler) *http.ServeMux {
 
 	registerClassroomRoutes(h, apiRouter)
 
+	registerSyncRoutes(h, apiRouter)
+
 	return mainRouter
 }

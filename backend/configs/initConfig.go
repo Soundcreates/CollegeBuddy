@@ -42,7 +42,7 @@ func LoadConfig() *Config {
 
 	scraperURL := os.Getenv("SCRAPER_SERVICE_URL")
 	if scraperURL == "" {
-		scraperURL = "https://collegebuddy-python.onrender.com"
+		scraperURL = "https://kisha-volcanologic-motherly.ngrok-free.dev"
 	}
 
 	cfg := &Config{

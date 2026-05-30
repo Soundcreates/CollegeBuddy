@@ -1,7 +1,12 @@
 import axios from "axios";
 
+const API_BASE_URL =
+  import.meta.env.VITE_MODE === "development"
+    ? import.meta.env.VITE_API_BASE_URL || "https://kisha-volcanologic-motherly.ngrok-free.dev"
+    : import.meta.env.VITE_API_BASE_URL || "https://collegebuddy-service.onrender.com";
+
 const server = axios.create({
-    baseURL: "https://kisha-volcanologic-motherly.ngrok-free.dev", // Update with your backend URL
+    baseURL: API_BASE_URL,
     withCredentials: true,
 });
 

@@ -10,11 +10,14 @@ This script tests the /filter-emails endpoint with sample academic emails.
 
 import requests
 import json
+import os
 from datetime import datetime
 from typing import Optional
+from dotenv import load_dotenv
 
 # Configuration
-BASE_URL = "https://collegebuddy-python.onrender.com"
+load_dotenv()
+BASE_URL = os.getenv("SCRAPER_SERVICE_URL", "https://kisha-volcanologic-motherly.ngrok-free.dev")
 ENDPOINT = "/filter-emails"
 TIMEOUT = 60
 

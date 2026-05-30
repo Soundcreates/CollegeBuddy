@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db.AutoMigrate(&models.Student{}, &models.GmailMessage{}, &models.Course{})
+	db.AutoMigrate(&models.Student{}, &models.GmailMessage{}, &models.Course{}, &models.CachedAssignment{})
 	log.Println("Database migrated successfully")
 	handler := handler.NewHandler(db, cfg)
 	gmailCron, err := handler.StartGmailScrapeCron()

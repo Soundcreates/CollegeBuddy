@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"somaiya-ext/internal/models"
 	"somaiya-ext/service"
 	"strings"
@@ -365,32 +367,55 @@ func (h *Handler) HandleAIHelp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build the payload for the RAG service
 	ragPayload := map[string]interface{}{
 		"title":       requestBody.Title,
 		"description": requestBody.Description,
-		"file_url":    requestBody.FileURL,
 	}
 
-	// If there's a file URL, pass user's Google access token to RAG so
-	// the RAG service can directly fetch and parse the attachment.
 	if requestBody.FileURL != "" {
-		// Get the user's access token for the RAG service download step
 		authHeader := r.Header.Get("Authorization")
 		token := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// Extract email from JWT for the OAuth client
+		email := ""
+		if claims, err := h.ParseJWTForScraping(token); err == nil {
+			email, _ = claims["email"].(string)
+		}
+
 		profile, err := h.BackendProfile(token)
 		if err == nil {
 			if studentData, ok := profile["user"].(map[string]interface{}); ok {
-				if accessToken, ok := studentData["o_access_token"].(string); ok {
+				accessToken, _ := studentData["o_access_token"].(string)
+				refreshToken, _ := studentData["o_refresh_token"].(string)
+
+				// Use an auto-refreshing OAuth client so expired tokens never
+				// silently produce empty document content in the RAG service.
+				oauthClient := service.GoogleHTTPClientFromStoredToken(
+					r.Context(),
+					h.Config.OAUTH_CLIENT_ID, h.Config.OAUTH_CLIENT_SECRET,
+					accessToken, refreshToken, email, h.DB,
+				)
+				oauthClient.Timeout = 60 * time.Second
+
+				fileBytes, contentType, err := downloadDriveFile(oauthClient, requestBody.FileURL)
+				if err != nil {
+					log.Printf("[CLASSROOM] Drive download failed (%v); falling back to URL+token", err)
+					ragPayload["file_url"] = requestBody.FileURL
 					ragPayload["file_access_token"] = accessToken
+				} else {
+					log.Printf("[CLASSROOM] Drive file downloaded: %d bytes, type=%s", len(fileBytes), contentType)
+					ragPayload["file_content_base64"] = base64.StdEncoding.EncodeToString(fileBytes)
+					ragPayload["file_content_type"] = contentType
 				}
 			}
+		} else {
+			log.Printf("[CLASSROOM] Could not fetch profile for token refresh: %v", err)
+			ragPayload["file_url"] = requestBody.FileURL
 		}
 	}
 
 	payloadBytes, _ := json.Marshal(ragPayload)
 
-	// Use the new /rag/assignment-help endpoint for Q&A extraction
 	scraperURL := h.Config.SCRAPER_SERVICE_URL + "/rag/assignment-help"
 	log.Println("[CLASSROOM] Forwarding to RAG service:", scraperURL)
 
@@ -407,6 +432,78 @@ func (h *Handler) HandleAIHelp(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
+}
+
+// downloadDriveFile fetches a Drive file using the given authenticated HTTP client.
+// Google-native files (Docs/Sheets/Slides) are exported as PDF automatically.
+func downloadDriveFile(client *http.Client, fileURL string) ([]byte, string, error) {
+	fileID := extractDriveFileID(fileURL)
+	if fileID == "" {
+		return nil, "", fmt.Errorf("could not extract Drive file ID from URL: %s", fileURL)
+	}
+
+	// Resolve mimeType so we know whether to export or use alt=media.
+	metaURL := "https://www.googleapis.com/drive/v3/files/" + fileID + "?fields=id,name,mimeType"
+	metaResp, err := client.Get(metaURL)
+	if err != nil {
+		return nil, "", fmt.Errorf("metadata fetch failed: %w", err)
+	}
+	defer metaResp.Body.Close()
+	if metaResp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("metadata returned HTTP %d for file %s", metaResp.StatusCode, fileID)
+	}
+
+	var meta struct {
+		MimeType string `json:"mimeType"`
+		Name     string `json:"name"`
+	}
+	json.NewDecoder(metaResp.Body).Decode(&meta)
+	log.Printf("[CLASSROOM] Drive metadata: id=%s name=%q mimeType=%s", fileID, meta.Name, meta.MimeType)
+
+	var downloadURL, contentType string
+	if strings.HasPrefix(meta.MimeType, "application/vnd.google-apps") {
+		// Google Docs/Sheets/Slides cannot be downloaded via alt=media; export as PDF.
+		downloadURL = "https://www.googleapis.com/drive/v3/files/" + fileID + "/export?mimeType=application/pdf"
+		contentType = "application/pdf"
+	} else {
+		downloadURL = "https://www.googleapis.com/drive/v3/files/" + fileID + "?alt=media"
+		contentType = meta.MimeType
+	}
+
+	fileResp, err := client.Get(downloadURL)
+	if err != nil {
+		return nil, "", fmt.Errorf("file download failed: %w", err)
+	}
+	defer fileResp.Body.Close()
+	if fileResp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("file download returned HTTP %d", fileResp.StatusCode)
+	}
+	if contentType == "" {
+		contentType = fileResp.Header.Get("Content-Type")
+	}
+
+	fileBytes, err := io.ReadAll(fileResp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read file body: %w", err)
+	}
+	return fileBytes, contentType, nil
+}
+
+// extractDriveFileID extracts a Drive file ID from common Google Drive URL shapes.
+func extractDriveFileID(rawURL string) string {
+	patterns := []string{
+		`/files/([a-zA-Z0-9_-]+)`,
+		`/d/([a-zA-Z0-9_-]+)`,
+		`[?&]id=([a-zA-Z0-9_-]+)`,
+	}
+	for _, pat := range patterns {
+		re := regexp.MustCompile(pat)
+		m := re.FindStringSubmatch(rawURL)
+		if len(m) > 1 {
+			return m[1]
+		}
+	}
+	return ""
 }
 
 // ──────────────────────────────────────────────

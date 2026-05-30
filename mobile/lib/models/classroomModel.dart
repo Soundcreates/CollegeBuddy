@@ -61,6 +61,14 @@ class MaterialModel {
   bool get isLink => type == 'link';
   bool get isYoutubeVideo => type == 'youtubeVideo';
   bool get isForm => type == 'form';
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'url': url,
+        'download_url': downloadUrl,
+        'type': type,
+        'thumbnail_url': thumbnailUrl,
+      };
 }
 
 class AssignmentModel {

@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:15
+    container_name: collegebuddy_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - collegebuddy_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: collegebuddy_backend
+    depends_on:
+      db:
+        condition: service_healthy
+      python:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/backend:Z
+    command: air
+    networks:
+      - collegebuddy_network
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_TIMEZONE: ${DB_TIMEZONE}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PORT}
+      OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID}
+      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
+      EXTENSION_ID: ${EXTENSION_ID}
+      DATABASE_URL: ${DATABASE_URL}
+      PYTHON_AI_SERVICE_URL: http://python:8000/text-classification
+      SCRAPER_SERVICE_URL: http://python:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  python:
+    build:
+      context: ../scraperService
+      dockerfile: Dockerfile
+    container_name: collegebuddy_python
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../scraperService:/python:Z
+    command: uvicorn app.app:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ../scraperService/.env
+    environment:
+      HF_TIMEOUT_SECONDS: ${HF_TIMEOUT_SECONDS:-20}
+      CLASSIFY_BUDGET_SECONDS: ${CLASSIFY_BUDGET_SECONDS:-45}
+    networks:
+      - collegebuddy_network
+
+volumes:
+  pgdata:
+
+networks:
+  collegebuddy_network:

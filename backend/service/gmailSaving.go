@@ -36,10 +36,11 @@ func FilterSomaiyaMails(messages []models.GmailMessage) ([]models.GmailMessage, 
 }
 
 func TextFilter(messages []models.GmailMessage) ([]models.GmailMessage, error) {
-	url := strings.TrimSpace(os.Getenv("PYTHON_AI_SERVICE_URL"))
+	url := strings.TrimSpace(os.Getenv("SCRAPER_SERVICE_URL"))
 	if url == "" {
-		url = "https://collegebuddy-python.onrender.com/text-classification"
+		url = "https://kisha-volcanologic-motherly.ngrok-free.dev"
 	}
+	url = url + "/text-classification"
 	log.Printf("Starting to contact the ai: %s", url)
 
 	// Collect email bodies (or snippets) into a slice

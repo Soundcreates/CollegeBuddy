@@ -44,9 +44,6 @@ type FilterResponse struct {
 	AllFiltered   []FilteredEmailResult            `json:"all_filtered"`
 }
 
-const (
-	scraperServiceBaseURL = "https://collegebuddy-python.onrender.com"
-)
 
 // FilterEmails sends emails to AI filtration service and returns organized results
 func FilterEmails(mails []models.GmailMessage, filterDate string) (FilterResponse, error) {
@@ -245,7 +242,7 @@ func FilterEmails(mails []models.GmailMessage, filterDate string) (FilterRespons
 func GetScraperServiceURL() string {
 	url := os.Getenv("SCRAPER_SERVICE_URL")
 	if url == "" {
-		url = scraperServiceBaseURL
+		url = "https://kisha-volcanologic-motherly.ngrok-free.dev"
 	}
 	return url
 }

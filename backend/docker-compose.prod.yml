@@ -17,11 +17,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-    networks: 
+    networks:
       - collegebuddy_network
 
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     container_name: collegebuddy_backend
     depends_on:
       db:
@@ -33,7 +35,7 @@ services:
     volumes:
       - .:/backend:Z
     command: air
-    networks: 
+    networks:
       - collegebuddy_network
     env_file:
       - .env
@@ -50,7 +52,8 @@ services:
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
       EXTENSION_ID: ${EXTENSION_ID}
       DATABASE_URL: ${DATABASE_URL}
-      PYTHON_AI_SERVICE_URL: ${PYTHON_AI_SERVICE_URL:-https://collegebuddy-python.onrender.com/text-classification}
+      PYTHON_AI_SERVICE_URL: http://python:8000/text-classification
+      SCRAPER_SERVICE_URL: http://python:8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -71,7 +74,6 @@ services:
       CLASSIFY_BUDGET_SECONDS: ${CLASSIFY_BUDGET_SECONDS:-45}
     networks:
       - collegebuddy_network
-
 
 volumes:
   pgdata:

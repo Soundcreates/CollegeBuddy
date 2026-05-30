@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile/models/userModel.dart';
 import 'package:app_links/app_links.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 
 class AuthApi extends ChangeNotifier {
@@ -25,7 +25,6 @@ class AuthApi extends ChangeNotifier {
       final userEmail = uri.queryParameters['user_email'];
       //now letss store them
 
-
       await storage.write(key: "access_token", value: accessToken);
 
       await storage.write(key: "user_email", value: userEmail);
@@ -33,8 +32,10 @@ class AuthApi extends ChangeNotifier {
       Navigator.of(context).pushReplacementNamed("/main");
     });
   }
-  
-  final String baseUrl = "https://collegebuddy-service.onrender.com";
+
+  final String baseUrl =
+      dotenv.env["API_URL"] ??
+      "https://kisha-volcanologic-motherly.ngrok-free.dev ";
   Future<void> startGoogleOauth() async {
     // Encode device info in the state parameter
     print("Starting google auth");

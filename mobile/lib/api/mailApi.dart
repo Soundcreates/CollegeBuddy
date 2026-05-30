@@ -2,11 +2,16 @@ import 'package:mobile/models/mailModel.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:flutter/material.dart';
 
 class MailApi extends ChangeNotifier {
-  final String baseUrl = "https://collegebuddy-service.onrender.com";
+  late final String baseUrl;
+
+  MailApi() {
+    baseUrl = dotenv.env['API_URL'] ?? "https://kisha-volcanologic-motherly.ngrok-free.dev";
+  }
   final FlutterSecureStorage storage = FlutterSecureStorage();
   bool _isFiltering = false;
   bool get isFiltering => _isFiltering;

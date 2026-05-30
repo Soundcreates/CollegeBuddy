@@ -25,6 +25,11 @@ from app.rag.router import router as rag_router
 app.include_router(rag_router)
 
 
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
 @app.post("/text-classification")
 async def classify_text(request: TextClassificationRequest):
     logger.info(

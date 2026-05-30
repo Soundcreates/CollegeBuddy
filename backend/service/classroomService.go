@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -14,11 +16,12 @@ import (
 
 // ClassroomClientFromStoredToken creates an authenticated Google Classroom service
 // using stored OAuth tokens. It reuses the dbTokenSource for automatic token persistence.
+
 func ClassroomClientFromStoredToken(ctx context.Context, clientID, clientSecret, accessToken, refreshToken, email string, db *gorm.DB) (*classroom.Service, error) {
 	config := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		RedirectURL:  "https://collegebuddy-service.onrender.com/api/auth/google/callback",
+		RedirectURL:  fmt.Sprintf("%s/api/auth/google/callback", os.Getenv("BACKEND_URL")),
 		Scopes: []string{
 			"https://www.googleapis.com/auth/classroom.courses.readonly",
 			"https://www.googleapis.com/auth/classroom.coursework.me",
@@ -53,7 +56,7 @@ func GoogleHTTPClientFromStoredToken(ctx context.Context, clientID, clientSecret
 	config := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		RedirectURL:  "https://collegebuddy-service.onrender.com/api/auth/google/callback",
+		RedirectURL:  fmt.Sprintf("%s/api/auth/google/callback", os.Getenv("BACKEND_URL")),
 		Scopes: []string{
 			"https://www.googleapis.com/auth/drive.readonly",
 		},
