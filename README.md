@@ -1,5 +1,4 @@
-git clone <repo-url>
-cd Somaiya_ext
+
 
 # CollegeBuddy
 
