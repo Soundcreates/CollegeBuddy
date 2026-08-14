@@ -4,15 +4,20 @@ import 'package:mobile/api/classroomApi.dart';
 import 'package:provider/provider.dart';
 import 'screens/loading_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/dashboard_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/classroom_screen.dart';
 import "package:mobile/api/mailApi.dart";
 import 'screens/settings_screen.dart';
+import 'screens/showcase_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() {
-  dotenv.load();
+  const showcase = bool.fromEnvironment('SHOWCASE', defaultValue: false);
+  if (showcase) {
+    runApp(const ShowcaseScreen(page: int.fromEnvironment('SHOWCASE_PAGE')));
+    return;
+  }
+  dotenv.load(isOptional: true);
   runApp(
     MultiProvider(
       providers: [
