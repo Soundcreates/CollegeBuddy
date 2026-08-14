@@ -2,6 +2,8 @@ import { FormEvent, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
+const latestReleaseUrl = 'https://github.com/Soundcreates/CollegeBuddy/releases/latest';
+
 const screenshots = [
   { file: 'signin.png', label: 'A softer start', title: 'One calm place to begin' },
   { file: 'inbox.png', label: 'Focused inbox', title: 'See what deserves your attention' },
@@ -46,7 +48,7 @@ function App() {
             <p className="eyebrow">A calmer way through college</p>
             <h1>Let your college life <em>grow</em>, not pile up.</h1>
             <p className="lede">CollegeBuddy gathers the emails, coursework, and small next steps that fill your day—so you can make room for the work that matters.</p>
-            <a className="button button-dark" href="#waitlist">Find your focus <span aria-hidden="true">→</span></a>
+            <a className="button button-dark" href={latestReleaseUrl} target="_blank" rel="noreferrer">Download app <span aria-hidden="true">↗</span></a>
             <p className="note">Built for students. Designed for a little more breathing room.</p>
           </div>
           <div className="hero-phone" aria-label="CollegeBuddy sign in screen">
