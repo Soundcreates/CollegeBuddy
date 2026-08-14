@@ -1,5 +1,5 @@
-name: mobile
-description: "A new Flutter project."
+name: CollegeBuddy
+description: "App that makes college students life easier"
 publish_to: "none"
 version: 0.1.0
 
@@ -45,3 +45,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/collegebuddy-mark.png

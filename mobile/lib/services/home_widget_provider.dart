@@ -1,6 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
-import 'package:mobile/models/widgetMailModel.dart';
+import 'package:CollegeBuddy/models/widgetMailModel.dart';
 
 /// This file is used as the entrypoint for the home widget
 /// Make sure to add this to your AndroidManifest.xml:
@@ -46,9 +48,8 @@ class _HomeWidgetProviderState extends State<HomeWidgetProvider> {
   Future<void> _loadMails() async {
     try {
       print("[WIDGET PROVIDER] Loading mails from widget storage (FRESH READ)");
-      final data =
-          await HomeWidget.getWidgetData<String>('emails_json') ?? '';
-      
+      final data = await HomeWidget.getWidgetData<String>('emails_json') ?? '';
+
       if (data.isEmpty) {
         print("[WIDGET PROVIDER] No emails in storage, showing empty state");
         setState(() {
@@ -61,10 +62,16 @@ class _HomeWidgetProviderState extends State<HomeWidgetProvider> {
         final decoded = jsonDecode(data) as List<dynamic>;
         setState(() {
           mails = decoded
-              .map((e) => WidgetMailModel.fromJson(Map<String, dynamic>.from(e as Map)))
+              .map(
+                (e) => WidgetMailModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
               .toList();
         });
-        print("[WIDGET PROVIDER] Loaded ${mails.length} mails from widget storage");
+        print(
+          "[WIDGET PROVIDER] Loaded ${mails.length} mails from widget storage",
+        );
       } catch (e) {
         print("[WIDGET PROVIDER] Error decoding widget data: $e");
         setState(() {
@@ -105,14 +112,9 @@ class _HomeWidgetProviderState extends State<HomeWidgetProvider> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('College Buddy - Mails'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('College Buddy - Mails'), elevation: 0),
       body: mails.isEmpty
-          ? const Center(
-              child: Text('No mails to display'),
-            )
+          ? const Center(child: Text('No mails to display'))
           : ListView.builder(
               itemCount: mails.length,
               padding: const EdgeInsets.all(12),
@@ -132,11 +134,8 @@ class _MailTodoItem extends StatelessWidget {
   final WidgetMailModel mail;
   final VoidCallback onToggle;
 
-  const _MailTodoItem({
-    Key? key,
-    required this.mail,
-    required this.onToggle,
-  }) : super(key: key);
+  const _MailTodoItem({Key? key, required this.mail, required this.onToggle})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -171,18 +170,12 @@ class _MailTodoItem extends StatelessWidget {
               mail.from,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
             const SizedBox(height: 4),
             Text(
               mail.date,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
             ),
           ],
         ),

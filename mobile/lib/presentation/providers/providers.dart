@@ -1,16 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:mobile/data/database/app_database.dart';
-import 'package:mobile/data/datasources/sync_api_client.dart';
-import 'package:mobile/data/repositories/assignment_repository.dart';
-import 'package:mobile/data/repositories/course_repository.dart';
-import 'package:mobile/data/repositories/mail_repository.dart';
-import 'package:mobile/data/repositories/sync_repository.dart';
-import 'package:mobile/domain/entities/assignment_entity.dart';
-import 'package:mobile/domain/entities/course_entity.dart';
-import 'package:mobile/domain/entities/mail_entity.dart';
-import 'package:mobile/services/sync_service.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:CollegeBuddy/data/database/app_database.dart';
+import 'package:CollegeBuddy/data/datasources/sync_api_client.dart';
+import 'package:CollegeBuddy/data/repositories/assignment_repository.dart';
+import 'package:CollegeBuddy/data/repositories/course_repository.dart';
+import 'package:CollegeBuddy/data/repositories/mail_repository.dart';
+import 'package:CollegeBuddy/data/repositories/sync_repository.dart';
+import 'package:CollegeBuddy/domain/entities/assignment_entity.dart';
+import 'package:CollegeBuddy/domain/entities/course_entity.dart';
+import 'package:CollegeBuddy/domain/entities/mail_entity.dart';
+import 'package:CollegeBuddy/services/sync_service.dart';
+import 'package:CollegeBuddy/api/backend_session.dart';
 
 // ── Infrastructure ────────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 // ── Remote ────────────────────────────────────────────────────────────────────
 
 final syncApiClientProvider = Provider<SyncApiClient>((ref) {
-  final baseUrl = dotenv.env['API_URL'] ?? 'https://kisha-volcanologic-motherly.ngrok-free.dev';
+  final baseUrl = BackendSession().baseUrl;
   return SyncApiClient(
     baseUrl: baseUrl,
     storage: ref.watch(secureStorageProvider),
@@ -81,13 +81,14 @@ final assignmentsProvider = StreamProvider<List<AssignmentEntity>>((ref) {
 });
 
 /// Assignments that have a due date, sorted by due date ascending.
-final upcomingDeadlinesProvider = Provider<AsyncValue<List<AssignmentEntity>>>((ref) {
+final upcomingDeadlinesProvider = Provider<AsyncValue<List<AssignmentEntity>>>((
+  ref,
+) {
   final all = ref.watch(assignmentsProvider);
   return all.whenData(
-    (list) => list
-        .where((a) => a.hasDueDate && a.state != 'TURNED_IN')
-        .toList()
-      ..sort((a, b) => a.dueDate.compareTo(b.dueDate)),
+    (list) =>
+        list.where((a) => a.hasDueDate && a.state != 'TURNED_IN').toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate)),
   );
 });
 

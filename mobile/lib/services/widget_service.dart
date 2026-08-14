@@ -1,7 +1,7 @@
 import 'package:home_widget/home_widget.dart';
-import "package:mobile/api/mailApi.dart";
-import 'package:mobile/models/mailModel.dart';
-import 'package:mobile/models/widgetMailModel.dart';
+import "package:CollegeBuddy/api/mailApi.dart";
+import 'package:CollegeBuddy/models/mailModel.dart';
+import 'package:CollegeBuddy/models/widgetMailModel.dart';
 import 'dart:convert';
 
 class WidgetService {

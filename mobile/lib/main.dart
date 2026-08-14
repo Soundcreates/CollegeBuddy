@@ -1,31 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/api/authApi.dart';
-import 'package:mobile/api/classroomApi.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
+import 'package:CollegeBuddy/api/authApi.dart';
+import 'package:CollegeBuddy/api/classroomApi.dart';
 import 'package:provider/provider.dart';
 import 'screens/loading_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/classroom_screen.dart';
-import "package:mobile/api/mailApi.dart";
+import "package:CollegeBuddy/api/mailApi.dart";
 import 'screens/settings_screen.dart';
 import 'screens/showcase_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env', isOptional: true);
   const showcase = bool.fromEnvironment('SHOWCASE', defaultValue: false);
   if (showcase) {
     runApp(const ShowcaseScreen(page: int.fromEnvironment('SHOWCASE_PAGE')));
     return;
   }
-  dotenv.load(isOptional: true);
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthApi()),
-        ChangeNotifierProvider(create: (_) => MailApi()),
-        ChangeNotifierProvider(create: (_) => ClassroomApi()),
-      ],
-      child: CollegeBuddyApp(),
+    ProviderScope(
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthApi()),
+          ChangeNotifierProvider(create: (_) => MailApi()),
+          ChangeNotifierProvider(create: (_) => ClassroomApi()),
+        ],
+        child: const CollegeBuddyApp(),
+      ),
     ),
   );
 }
@@ -37,16 +42,7 @@ class CollegeBuddyApp extends StatelessWidget {
     return MaterialApp(
       title: 'CollegeBuddy',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.black,
-        colorScheme: ColorScheme.dark(
-          primary: Colors.blue,
-          secondary: Colors.blueAccent,
-          surface: Color(0xFF111111),
-        ),
-      ),
+      theme: collegeBuddyTheme(),
       initialRoute: '/', // Start with the loading screen
       routes: {
         '/': (context) => const LoadingScreen(),

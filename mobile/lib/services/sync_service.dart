@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:logging/logging.dart';
-import 'package:mobile/data/datasources/sync_api_client.dart';
-import 'package:mobile/domain/repositories/i_assignment_repository.dart';
-import 'package:mobile/domain/repositories/i_course_repository.dart';
-import 'package:mobile/domain/repositories/i_mail_repository.dart';
-import 'package:mobile/domain/repositories/i_sync_repository.dart';
+import 'package:CollegeBuddy/data/datasources/sync_api_client.dart';
+import 'package:CollegeBuddy/domain/repositories/i_assignment_repository.dart';
+import 'package:CollegeBuddy/domain/repositories/i_course_repository.dart';
+import 'package:CollegeBuddy/domain/repositories/i_mail_repository.dart';
+import 'package:CollegeBuddy/domain/repositories/i_sync_repository.dart';
 
 enum SyncStatus { idle, syncing, success, failure }
 

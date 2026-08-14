@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
-import 'package:mobile/data/database/app_database.dart';
-import 'package:mobile/domain/entities/mail_entity.dart';
-import 'package:mobile/domain/repositories/i_mail_repository.dart';
-import 'package:mobile/models/mailModel.dart';
+import 'package:CollegeBuddy/data/database/app_database.dart';
+import 'package:CollegeBuddy/domain/entities/mail_entity.dart';
+import 'package:CollegeBuddy/domain/repositories/i_mail_repository.dart';
+import 'package:CollegeBuddy/models/mailModel.dart';
 
 class MailRepository implements IMailRepository {
   final AppDatabase _db;

@@ -1,5 +1,5 @@
-import 'package:mobile/data/database/app_database.dart';
-import 'package:mobile/domain/repositories/i_sync_repository.dart';
+import 'package:CollegeBuddy/data/database/app_database.dart';
+import 'package:CollegeBuddy/domain/repositories/i_sync_repository.dart';
 
 class SyncRepository implements ISyncRepository {
   static const _kLastSyncKey = 'last_sync_time';

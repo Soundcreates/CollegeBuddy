@@ -253,8 +253,6 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	tokenString := query.Get("token")
-	fmt.Println("[DEBUG] Token from flutter: ", tokenString)
-	fmt.Println("[DEBUG] JWT_SECRET used: ", h.Config.JWT_SECRET)
 	if tokenString == "" {
 		http.Error(w, "Token is required", http.StatusBadRequest)
 		return
@@ -390,12 +388,31 @@ func (h *Handler) RefreshToken(refreshToken string) (error, bool, map[string]int
 	return nil, true, response
 }
 
+func (h *Handler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var request struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.RefreshToken == "" {
+		http.Error(w, "refresh_token is required", http.StatusBadRequest)
+		return
+	}
+
+	err, success, response := h.RefreshToken(request.RefreshToken)
+	if err != nil || !success {
+		http.Error(w, "token refresh failed", http.StatusUnauthorized)
+		return
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
 // helper function to generate call back html for mobile
 func (h *Handler) generateMobileCallbackHTML(w http.ResponseWriter, r *http.Request, user models.Student, accessToken string, refreshToken string) {
 	w.Header().Set("Content-Type", "text/html")
 
 	redirectURL := fmt.Sprintf("collegebuddy://auth?success=true&access_token=%s&refresh_token=%s&user_email=%s", url.QueryEscape(accessToken), url.QueryEscape(refreshToken), url.QueryEscape(user.SVVEmail))
-	log.Println("Redirecting to: ", redirectURL)
+	log.Println("Redirecting OAuth client to mobile callback")
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 

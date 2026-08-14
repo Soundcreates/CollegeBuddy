@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:mobile/api/classroomApi.dart';
-import 'package:mobile/models/classroomModel.dart';
+import 'package:CollegeBuddy/api/classroomApi.dart';
+import 'package:CollegeBuddy/models/classroomModel.dart';
+import 'package:CollegeBuddy/theme/app_theme.dart';
 
 class AssignmentDetailScreen extends StatefulWidget {
   final AssignmentModel assignment;
@@ -18,18 +19,18 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   final ClassroomApi _api = ClassroomApi();
 
   // ─── Colors ───
-  static const Color background = Color(0xFF161311);
-  static const Color surfaceContainerLow = Color(0xFF1F1B19);
-  static const Color primary = Color(0xFFFFB59C);
-  static const Color onSurfaceVariant = Color(0xFFDBC1B9);
-  static const Color onSurface = Color(0xFFEAE1DD);
-  static const Color secondaryContainer = Color(0xFF3E4D3E);
-  static const Color onSecondaryContainer = Color(0xFFACBDAB);
-  static const Color surfaceContainerHighest = Color(0xFF393431);
-  static const Color outlineVariant = Color(0xFF55433D);
-  static const Color surfaceContainerLowest = Color(0xFF110D0C);
-  static const Color primaryContainer = Color(0xFFD97552);
-  static const Color onPrimary = Color(0xFF5C1900);
+  static const Color background = AppColors.cream;
+  static const Color surfaceContainerLow = AppColors.paper;
+  static const Color primary = AppColors.ink;
+  static const Color onSurfaceVariant = AppColors.moss;
+  static const Color onSurface = AppColors.ink;
+  static const Color secondaryContainer = AppColors.paleMoss;
+  static const Color onSecondaryContainer = AppColors.ink;
+  static const Color surfaceContainerHighest = AppColors.mutedPaper;
+  static const Color outlineVariant = AppColors.line;
+  static const Color surfaceContainerLowest = AppColors.paper;
+  static const Color primaryContainer = AppColors.clay;
+  static const Color onPrimary = Colors.white;
 
   Uri? _toHttpUri(String raw) {
     final value = raw.trim();
@@ -92,15 +93,19 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
             _buildAppBar(),
             Expanded(
               child: ListView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 24,
+                ),
                 children: [
                   // Course badge
                   if (a.courseName.isNotEmpty) ...[
                     FadeInDown(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: secondaryContainer.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(8),
@@ -108,8 +113,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.school_outlined,
-                                size: 14, color: onSecondaryContainer),
+                            Icon(
+                              Icons.school_outlined,
+                              size: 14,
+                              color: onSecondaryContainer,
+                            ),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
@@ -155,17 +163,19 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                       children: [
                         if (a.hasDueDate)
                           _buildChip(
-                              Icons.schedule_rounded, 'Due: ${a.dueDate}',
-                              accent: true),
+                            Icons.schedule_rounded,
+                            'Due: ${a.dueDate}',
+                            accent: true,
+                          ),
                         if (a.maxPoints > 0)
-                          _buildChip(Icons.star_outline_rounded,
-                              '${a.maxPoints.toInt()} points'),
+                          _buildChip(
+                            Icons.star_outline_rounded,
+                            '${a.maxPoints.toInt()} points',
+                          ),
                         if (a.workType.isNotEmpty)
-                          _buildChip(
-                              Icons.category_outlined, a.workType),
+                          _buildChip(Icons.category_outlined, a.workType),
                         if (a.state.isNotEmpty)
-                          _buildChip(
-                              Icons.flag_outlined, a.state),
+                          _buildChip(Icons.flag_outlined, a.state),
                       ],
                     ),
                   ),
@@ -231,8 +241,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          ...a.materials.map(
-                              (m) => _buildMaterialCard(m)),
+                          ...a.materials.map((m) => _buildMaterialCard(m)),
                         ],
                       ),
                     ),
@@ -264,9 +273,12 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: onSurfaceVariant,
                           side: BorderSide(
-                              color: outlineVariant.withOpacity(0.4)),
+                            color: outlineVariant.withOpacity(0.4),
+                          ),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 14),
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -298,8 +310,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new,
-                color: primary, size: 18),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: primary,
+              size: 18,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 4),
@@ -332,9 +347,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon,
-              size: 14,
-              color: accent ? primary : onSurfaceVariant.withOpacity(0.6)),
+          Icon(
+            icon,
+            size: 14,
+            color: accent ? primary : onSurfaceVariant.withOpacity(0.6),
+          ),
           const SizedBox(width: 5),
           Text(
             label,
@@ -411,8 +428,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                 color: primary.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.auto_awesome_rounded,
-                  size: 22, color: primary),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 22,
+                color: primary,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -440,8 +460,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded,
-                color: primary.withOpacity(0.7), size: 22),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: primary.withOpacity(0.7),
+              size: 22,
+            ),
           ],
         ),
       ),
@@ -454,10 +477,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _AIHelpModal(
-        assignment: widget.assignment,
-        api: _api,
-      ),
+      builder: (ctx) => _AIHelpModal(assignment: widget.assignment, api: _api),
     );
   }
 }
@@ -480,15 +500,15 @@ class _AIHelpModalState extends State<_AIHelpModal> {
   bool _loading = true;
   AIHelpResponse? _response;
 
-  static const Color background = Color(0xFF161311);
-  static const Color surfaceContainerLow = Color(0xFF1F1B19);
-  static const Color primary = Color(0xFFFFB59C);
-  static const Color onSurfaceVariant = Color(0xFFDBC1B9);
-  static const Color onSurface = Color(0xFFEAE1DD);
-  static const Color surfaceContainerHighest = Color(0xFF393431);
-  static const Color outlineVariant = Color(0xFF55433D);
-  static const Color surfaceContainerLowest = Color(0xFF110D0C);
-  static const Color primaryContainer = Color(0xFFD97552);
+  static const Color background = AppColors.cream;
+  static const Color surfaceContainerLow = AppColors.paper;
+  static const Color primary = AppColors.ink;
+  static const Color onSurfaceVariant = AppColors.moss;
+  static const Color onSurface = AppColors.ink;
+  static const Color surfaceContainerHighest = AppColors.mutedPaper;
+  static const Color outlineVariant = AppColors.line;
+  static const Color surfaceContainerLowest = AppColors.paper;
+  static const Color primaryContainer = AppColors.clay;
 
   @override
   void initState() {
@@ -553,8 +573,11 @@ class _AIHelpModalState extends State<_AIHelpModal> {
                     color: primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.auto_awesome_rounded,
-                      size: 18, color: primary),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 18,
+                    color: primary,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -584,8 +607,11 @@ class _AIHelpModalState extends State<_AIHelpModal> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close_rounded,
-                      color: onSurfaceVariant.withOpacity(0.5), size: 22),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: onSurfaceVariant.withOpacity(0.5),
+                    size: 22,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -599,8 +625,8 @@ class _AIHelpModalState extends State<_AIHelpModal> {
             child: _loading
                 ? _buildLoadingContent()
                 : _response == null || !_response!.success
-                    ? _buildErrorContent()
-                    : _buildSuccessContent(),
+                ? _buildErrorContent()
+                : _buildSuccessContent(),
           ),
         ],
       ),
@@ -628,8 +654,7 @@ class _AIHelpModalState extends State<_AIHelpModal> {
                       color: primary.withOpacity(0.5),
                     ),
                   ),
-                  Icon(Icons.auto_awesome_rounded,
-                      size: 20, color: primary),
+                  Icon(Icons.auto_awesome_rounded, size: 20, color: primary),
                 ],
               ),
             ),
@@ -671,8 +696,11 @@ class _AIHelpModalState extends State<_AIHelpModal> {
                   color: Colors.red.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.error_outline_rounded,
-                    size: 28, color: Colors.redAccent),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  size: 28,
+                  color: Colors.redAccent,
+                ),
               ),
               const SizedBox(height: 20),
               Text(
@@ -776,36 +804,37 @@ class _AIHelpModalState extends State<_AIHelpModal> {
                 const SizedBox(height: 12),
 
                 // Bullet points
-                ...section.points.map((point) => Padding(
-                      padding: const EdgeInsets.only(
-                          left: 14, bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(top: 7),
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: primary.withOpacity(0.6),
-                              shape: BoxShape.circle,
+                ...section.points.map(
+                  (point) => Padding(
+                    padding: const EdgeInsets.only(left: 14, bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 7),
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: primary.withOpacity(0.6),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            point,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: onSurface.withOpacity(0.85),
+                              fontWeight: FontWeight.w400,
+                              height: 1.55,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              point,
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: onSurface.withOpacity(0.85),
-                                fontWeight: FontWeight.w400,
-                                height: 1.55,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -968,7 +997,9 @@ class _MaterialCardWidgetState extends State<_MaterialCardWidget> {
         : 'download';
 
     final path = await widget.api.downloadAttachment(
-      originalUrl: widget.material.downloadUrl.isNotEmpty ? widget.material.downloadUrl : widget.material.url,
+      originalUrl: widget.material.downloadUrl.isNotEmpty
+          ? widget.material.downloadUrl
+          : widget.material.url,
       filename: filename,
       onProgress: (p) {
         if (mounted) setState(() => _progress = p);
@@ -1067,10 +1098,10 @@ class _MaterialCardWidgetState extends State<_MaterialCardWidget> {
                         _downloading
                             ? 'Downloading...'
                             : _downloadedPath != null
-                                ? 'Downloaded ✓'
-                                : widget.material.type == 'driveFile'
-                                    ? 'Tap to download'
-                                    : widget.material.type,
+                            ? 'Downloaded ✓'
+                            : widget.material.type == 'driveFile'
+                            ? 'Tap to download'
+                            : widget.material.type,
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           color: _downloadedPath != null

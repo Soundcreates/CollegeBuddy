@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:mobile/domain/entities/assignment_entity.dart';
-import 'package:mobile/domain/entities/mail_entity.dart';
-import 'package:mobile/domain/entities/course_entity.dart';
-import 'package:mobile/models/classroomModel.dart';
-import 'package:mobile/models/mailModel.dart';
+import 'package:CollegeBuddy/api/backend_session.dart';
+import 'package:CollegeBuddy/domain/entities/assignment_entity.dart';
+import 'package:CollegeBuddy/domain/entities/mail_entity.dart';
+import 'package:CollegeBuddy/domain/entities/course_entity.dart';
+import 'package:CollegeBuddy/models/classroomModel.dart';
+import 'package:CollegeBuddy/models/mailModel.dart';
 
 /// Response object returned by the /sync endpoint.
 class SyncResponse {
@@ -26,22 +27,18 @@ class SyncResponse {
 /// entities. This class owns the HTTP concern; it knows nothing about SQLite.
 class SyncApiClient {
   final String baseUrl;
-  final FlutterSecureStorage _storage;
+  final BackendSession _session;
   final http.Client _client;
 
   SyncApiClient({
     required this.baseUrl,
     FlutterSecureStorage? storage,
     http.Client? client,
-  })  : _storage = storage ?? const FlutterSecureStorage(),
-        _client = client ?? http.Client();
+  }) : _session = BackendSession(storage: storage),
+       _client = client ?? http.Client();
 
   Future<Map<String, String>> _authHeaders() async {
-    final token = await _storage.read(key: 'access_token');
-    return {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
+    return _session.headers();
   }
 
   /// Fetches delta data from the backend since [since].
@@ -57,6 +54,7 @@ class SyncApiClient {
     final response = await _client
         .get(uri, headers: headers)
         .timeout(const Duration(seconds: 30));
+    await _session.captureResponseToken(response);
 
     if (response.statusCode != 200) {
       throw SyncException(
@@ -93,9 +91,10 @@ class SyncApiClient {
         courseId: (m['course_id'] ?? '').toString(),
         courseName: (m['course_name'] ?? '').toString(),
         materials: materialsRaw
-            .map((e) => MaterialModel.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ))
+            .map(
+              (e) =>
+                  MaterialModel.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
             .toList(),
         cachedAt: now,
       );
@@ -105,7 +104,8 @@ class SyncApiClient {
     final announcementsRaw = json['announcements'] as List? ?? [];
     final announcements = announcementsRaw.map((raw) {
       final m = Map<String, dynamic>.from(raw as Map);
-      final attachmentsRaw = (m['attachments'] ?? m['attatchments']) as List? ?? [];
+      final attachmentsRaw =
+          (m['attachments'] ?? m['attatchments']) as List? ?? [];
       final serverCreatedAt = m['server_created_at'] != null
           ? DateTime.tryParse(m['server_created_at'].toString()) ?? now
           : now;
@@ -120,9 +120,10 @@ class SyncApiClient {
         snippet: (m['snippet'] ?? '').toString(),
         body: (m['body'] ?? '').toString(),
         attachments: attachmentsRaw
-            .map((e) => AttachmentModel.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ))
+            .map(
+              (e) =>
+                  AttachmentModel.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
             .toList(),
         serverCreatedAt: serverCreatedAt,
         cachedAt: now,

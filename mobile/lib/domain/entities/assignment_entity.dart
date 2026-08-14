@@ -1,4 +1,4 @@
-import 'package:mobile/models/classroomModel.dart';
+import 'package:CollegeBuddy/models/classroomModel.dart';
 
 class AssignmentEntity {
   final String id;

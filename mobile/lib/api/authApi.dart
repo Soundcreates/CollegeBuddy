@@ -1,99 +1,115 @@
-import 'dart:ui';
-import "dart:convert";
-import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
-import 'package:mobile/models/userModel.dart';
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:app_links/app_links.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:CollegeBuddy/api/backend_session.dart';
+import 'package:CollegeBuddy/models/userModel.dart';
 
 class AuthApi extends ChangeNotifier {
-  final appLinks = AppLinks();
+  AuthApi._internal();
+
+  static final AuthApi _instance = AuthApi._internal();
+  factory AuthApi() => _instance;
+
+  final AppLinks _appLinks = AppLinks();
+  final BackendSession session = BackendSession();
+  StreamSubscription<Uri>? _deepLinkSubscription;
+  bool _deepLinksInitialized = false;
+
   bool isLoading = false;
-  final FlutterSecureStorage storage = FlutterSecureStorage();
+  String get baseUrl => session.baseUrl;
+
   void initDeepLinks(BuildContext context) {
-    appLinks.uriLinkStream.listen((uri) async {
-      if (uri == null) return;
-
-      print("Deep link received: $uri");
-      final success = uri.queryParameters['success'];
-      //these access tokens andrefersh tokens are of jwt
-      final accessToken = uri.queryParameters['access_token'];
-      final refreshToken = uri.queryParameters['refresh_token'];
-      final userEmail = uri.queryParameters['user_email'];
-      //now letss store them
-
-      await storage.write(key: "access_token", value: accessToken);
-
-      await storage.write(key: "user_email", value: userEmail);
-      print("Tokens and user email stored securely");
-      Navigator.of(context).pushReplacementNamed("/main");
-    });
+    if (_deepLinksInitialized) return;
+    _deepLinksInitialized = true;
+    _deepLinkSubscription = _appLinks.allUriLinkStream.listen(
+      (uri) => _handleCallback(uri, context),
+      onError: (Object error) => debugPrint('Deep-link error: $error'),
+    );
   }
 
-  final String baseUrl =
-      dotenv.env["API_URL"] ??
-      "https://kisha-volcanologic-motherly.ngrok-free.dev ";
+  Future<void> _handleCallback(Uri uri, BuildContext context) async {
+    if (uri.scheme != 'collegebuddy' || uri.host != 'auth') return;
+    if (uri.queryParameters['success'] != 'true') return;
+
+    final accessToken = uri.queryParameters['access_token'];
+    if (accessToken == null || accessToken.isEmpty) return;
+
+    await session.saveTokens(
+      accessToken: accessToken,
+      refreshToken: uri.queryParameters['refresh_token'],
+      email: uri.queryParameters['user_email'],
+    );
+    notifyListeners();
+
+    if (context.mounted) {
+      Navigator.of(context).pushReplacementNamed('/main');
+    }
+  }
+
   Future<void> startGoogleOauth() async {
-    // Encode device info in the state parameter
-    print("Starting google auth");
-    final state = "kjssecodecell";
-    final url = Uri.parse("$baseUrl/api/auth/OAuth?state=$state");
+    isLoading = true;
+    notifyListeners();
     try {
-      isLoading = true;
-      final response = await http.get(url);
-      print("[DEBUG] OAuth response status: ${response.statusCode}");
-      print("[DEBUG] OAuth response body: ${response.body}");
-      final data = json.decode(response.body);
-      final authUrl = data['oauth_url'];
-      print("[DEBUG] OAuth URL from backend: $authUrl");
-      if (authUrl == null || authUrl.isEmpty) {
-        throw Exception("Invalid OAuth URL received from backend");
+      final uri = Uri.parse(
+        '$baseUrl/api/auth/OAuth',
+      ).replace(queryParameters: {'state': 'kjssecodecell'});
+      final response = await http.get(uri).timeout(const Duration(seconds: 20));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OAuth request failed (${response.statusCode})');
       }
-      await launchUrl(Uri.parse(authUrl), mode: LaunchMode.externalApplication);
-    } catch (e) {
-      print("Error launching URL: $e");
-      return;
+      final authUrl =
+          (jsonDecode(response.body) as Map<String, dynamic>)['oauth_url']
+              ?.toString();
+      if (authUrl == null || authUrl.isEmpty)
+        throw Exception('Backend returned no OAuth URL');
+      final launched = await launchUrl(
+        Uri.parse(authUrl),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) throw Exception('Could not open Google sign-in');
     } finally {
       isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<UserModel?> get currentUser async {
-    final storage = FlutterSecureStorage();
-    final userToken = await storage.read(key: "access_token");
-    if (userToken == null) {
-      print("No access token found in storage.");
-      return null;
-    }
-    print("[DEBUG] JWT token being sent to backend: $userToken");
+    final token = await session.accessToken;
+    if (token == null || token.isEmpty) return null;
+
     try {
-      final url = Uri.parse("$baseUrl/api/auth/get-profile?token=$userToken");
-      print("[DEBUG] Profile fetch URL: $url");
-      final response = await http.get(url);
-      print("[DEBUG] Backend response status: ${response.statusCode}");
-      print("[DEBUG] Backend response body: ${response.body}");
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final user = UserModel.fromJson(decoded["user"]);
-        return user;
-      } else {
-        print("Failed to fetch user profile: ${response.statusCode}");
-        print(response);
+      final uri = Uri.parse(
+        '$baseUrl/api/auth/get-profile',
+      ).replace(queryParameters: {'token': token});
+      var response = await http.get(uri).timeout(const Duration(seconds: 20));
+      if (response.statusCode == 401 && await session.refreshAccessToken()) {
+        response = await http.get(uri).timeout(const Duration(seconds: 20));
       }
-    } catch (e) {
-      print("Error fetching user profile: $e");
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final user = decoded['user'];
+      if (user is! Map) return null;
+      return UserModel.fromJson(Map<String, dynamic>.from(user));
+    } catch (error) {
+      debugPrint('Profile fetch failed: $error');
       return null;
     }
   }
 
-  Future<void> Logout() async {
-    final storage = FlutterSecureStorage();
-    await storage.delete(key: "access_token");
-    await storage.delete(key: "refresh_token");
-    await storage.delete(key: "user_email");
-    print("User logged out, tokens cleared");
+  Future<void> logout() async {
+    await session.clear();
+    notifyListeners();
+  }
+
+  Future<void> disposeDeepLinks() async {
+    await _deepLinkSubscription?.cancel();
+    _deepLinkSubscription = null;
+    _deepLinksInitialized = false;
   }
 }

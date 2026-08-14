@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile/domain/entities/assignment_entity.dart';
-import 'package:mobile/domain/entities/mail_entity.dart';
-import 'package:mobile/presentation/providers/providers.dart';
-import 'package:mobile/services/sync_service.dart';
+import 'package:CollegeBuddy/domain/entities/assignment_entity.dart';
+import 'package:CollegeBuddy/domain/entities/mail_entity.dart';
+import 'package:CollegeBuddy/presentation/providers/providers.dart';
+import 'package:CollegeBuddy/services/sync_service.dart';
 
 /// Dashboard that always renders from SQLite and never calls APIs directly.
 /// The SyncService pushes fresh data in the background; reactive streams

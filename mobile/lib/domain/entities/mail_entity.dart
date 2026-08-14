@@ -1,4 +1,4 @@
-import 'package:mobile/models/mailModel.dart';
+import 'package:CollegeBuddy/models/mailModel.dart';
 
 class MailEntity {
   final String id;

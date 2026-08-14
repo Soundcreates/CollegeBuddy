@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
-import 'package:mobile/data/database/app_database.dart';
-import 'package:mobile/domain/entities/course_entity.dart';
-import 'package:mobile/domain/repositories/i_course_repository.dart';
+import 'package:CollegeBuddy/data/database/app_database.dart';
+import 'package:CollegeBuddy/domain/entities/course_entity.dart';
+import 'package:CollegeBuddy/domain/repositories/i_course_repository.dart';
 
 class CourseRepository implements ICourseRepository {
   final AppDatabase _db;

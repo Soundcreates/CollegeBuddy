@@ -1,4 +1,4 @@
-import 'package:mobile/domain/entities/assignment_entity.dart';
+import 'package:CollegeBuddy/domain/entities/assignment_entity.dart';
 
 abstract interface class IAssignmentRepository {
   /// Reactive stream — emits a new list every time SQLite is updated.

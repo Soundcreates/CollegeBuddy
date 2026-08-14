@@ -1,100 +1,95 @@
-import 'package:mobile/models/mailModel.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:CollegeBuddy/api/backend_session.dart';
+import 'package:CollegeBuddy/models/mailModel.dart';
 
 class MailApi extends ChangeNotifier {
-  late final String baseUrl;
+  MailApi({BackendSession? session}) : session = session ?? BackendSession();
 
-  MailApi() {
-    baseUrl = dotenv.env['API_URL'] ?? "https://kisha-volcanologic-motherly.ngrok-free.dev";
-  }
-  final FlutterSecureStorage storage = FlutterSecureStorage();
+  final BackendSession session;
+  String get baseUrl => session.baseUrl;
+
   bool _isFiltering = false;
   bool get isFiltering => _isFiltering;
 
- Future<List<MailModel>?> fetchUserMails() async {
-    print("[MAIL API] fetchUserMails called");
-    final url = "$baseUrl/api/scrape/gmail";
+  Future<List<MailModel>?> fetchUserMails() async {
     try {
-      final accessToken = await storage.read(key: "access_token");
-      if (accessToken == null || accessToken.isEmpty) {
-        print("[MAIL API] Access token not found or empty");
-        return null;
-      }
-      print("[MAIL API] Access token successfully extracted");
-      final finalUrl = Uri.parse(url);
-      print("[MAIL API] Sending POST request to $finalUrl");
       final response = await http.post(
-        finalUrl,
-        headers: {
-          "Authorization": "Bearer $accessToken",
-          "Content-Type": "application/json"
-        },
+        Uri.parse('$baseUrl/api/scrape/gmail'),
+        headers: await session.headers(),
       );
-      print("[MAIL API] Response status code: ${response.statusCode}");
-      print("[MAIL API] Response body preview: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}");
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final mailResults = (decoded["messages"] as List)
-          .map((mail) => MailModel.fromJson(mail as Map<String, dynamic>))
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final messages = decoded['messages'] ?? decoded['all_filtered'];
+      if (messages is! List) return <MailModel>[];
+      return messages
+          .whereType<Map>()
+          .map((mail) => MailModel.fromJson(Map<String, dynamic>.from(mail)))
           .toList();
-        print("[MAIL API] Successfully fetched ${mailResults.length} mails");
-        return mailResults.cast<MailModel>();
-      } else {
-        print("[MAIL API] Failed to fetch mails: ${response.statusCode}");
-        return null;
+    } catch (error) {
+      debugPrint('Mail fetch failed: $error');
+      return null;
+    }
+  }
+
+  Future<MailModel?> fetchMessage(String id) async {
+    if (id.isEmpty) return null;
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/api/scrape/gmail/message',
+      ).replace(queryParameters: {'id': id});
+      final response = await http.get(uri, headers: await session.headers());
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final result =
+          decoded['message'] ?? decoded['messages'] ?? decoded['all_filtered'];
+      if (result is Map) {
+        return MailModel.fromJson(Map<String, dynamic>.from(result));
       }
-    } catch (e) {
-      print("[MAIL API] Error fetching mails: $e");
+      if (result is List && result.isNotEmpty && result.first is Map) {
+        return MailModel.fromJson(
+          Map<String, dynamic>.from(result.first as Map),
+        );
+      }
+      return null;
+    } catch (error) {
+      debugPrint('Message fetch failed: $error');
       return null;
     }
   }
 
   Future<String?> startMailFilterStreamJob() async {
-    final url = "$baseUrl/api/scrape/gmail/stream/start";
     try {
-      final accessToken = await storage.read(key: "access_token");
-      if (accessToken == null || accessToken.isEmpty) {
-        return null;
-      }
-      final resp = await http.post(
-        Uri.parse(url),
-        headers: {
-          "Authorization": "Bearer $accessToken",
-          "Content-Type": "application/json",
-        },
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/scrape/gmail/stream/start'),
+        headers: await session.headers(),
       );
-      if (resp.statusCode != 200) return null;
-      final decoded = json.decode(resp.body) as Map<String, dynamic>;
-      return decoded["job_id"] as String?;
-    } catch (e) {
-      print("[MAIL API] Error starting stream job: $e");
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return null;
+      return (jsonDecode(response.body) as Map<String, dynamic>)['job_id']
+          ?.toString();
+    } catch (error) {
+      debugPrint('Mail stream start failed: $error');
       return null;
     }
   }
 
   Future<Map<String, dynamic>?> pollMailFilterStreamJob(String jobId) async {
-    final url = "$baseUrl/api/scrape/gmail/stream/poll?job_id=${Uri.encodeComponent(jobId)}";
     try {
-      final accessToken = await storage.read(key: "access_token");
-      if (accessToken == null || accessToken.isEmpty) {
-        return null;
-      }
-      final resp = await http.get(
-        Uri.parse(url),
-        headers: {
-          "Authorization": "Bearer $accessToken",
-          "Content-Type": "application/json",
-        },
-      );
-      if (resp.statusCode != 200) return null;
-      return json.decode(resp.body) as Map<String, dynamic>;
-    } catch (e) {
-      print("[MAIL API] Error polling stream job: $e");
+      final uri = Uri.parse(
+        '$baseUrl/api/scrape/gmail/stream/poll',
+      ).replace(queryParameters: {'job_id': jobId});
+      final response = await http.get(uri, headers: await session.headers());
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return null;
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (error) {
+      debugPrint('Mail stream poll failed: $error');
       return null;
     }
   }
@@ -102,50 +97,41 @@ class MailApi extends ChangeNotifier {
   Stream<List<MailModel>> streamFilteredMails({int minBatchToEmit = 5}) async* {
     _isFiltering = true;
     notifyListeners();
-
-    final jobId = await startMailFilterStreamJob();
-    if (jobId == null || jobId.isEmpty) {
-      _isFiltering = false;
-      notifyListeners();
-      yield <MailModel>[];
-      return;
-    }
-
-    var lastCount = 0;
-    while (true) {
-      final polled = await pollMailFilterStreamJob(jobId);
-      if (polled == null) {
-        await Future.delayed(const Duration(seconds: 1));
-        continue;
-      }
-
-      final done = polled["done"] == true;
-      final err = polled["error"] as String?;
-      if (err != null && err.isNotEmpty) {
-        _isFiltering = false;
-        notifyListeners();
+    try {
+      final jobId = await startMailFilterStreamJob();
+      if (jobId == null || jobId.isEmpty) {
         yield <MailModel>[];
         return;
       }
 
-      final messagesRaw = polled["messages"];
-      final List<dynamic> list = messagesRaw is List ? messagesRaw : <dynamic>[];
-      final mails = list
-          .map((m) => MailModel.fromJson(m as Map<String, dynamic>))
-          .toList();
-
-      if (mails.length != lastCount) {
-        lastCount = mails.length;
-        if (mails.length >= minBatchToEmit || done) {
-          yield mails;
+      var lastCount = 0;
+      while (true) {
+        final payload = await pollMailFilterStreamJob(jobId);
+        if (payload == null) {
+          await Future<void>.delayed(const Duration(seconds: 1));
+          continue;
         }
+        final messages = (payload['messages'] as List? ?? const [])
+            .whereType<Map>()
+            .map((mail) => MailModel.fromJson(Map<String, dynamic>.from(mail)))
+            .toList();
+        final done = payload['done'] == true;
+        final error = payload['error']?.toString() ?? '';
+        if (error.isNotEmpty) {
+          yield <MailModel>[];
+          return;
+        }
+        if (messages.length != lastCount &&
+            (messages.length >= minBatchToEmit || done)) {
+          lastCount = messages.length;
+          yield messages;
+        }
+        if (done) return;
+        await Future<void>.delayed(const Duration(seconds: 1));
       }
-
-      if (done) break;
-      await Future.delayed(const Duration(seconds: 1));
+    } finally {
+      _isFiltering = false;
+      notifyListeners();
     }
-
-    _isFiltering = false;
-    notifyListeners();
   }
 }

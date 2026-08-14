@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import "package:mobile/models/mailModel.dart";
+import "package:CollegeBuddy/models/mailModel.dart";
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:CollegeBuddy/theme/app_theme.dart';
 
 class EmailViewScreen extends StatelessWidget {
   final MailModel email;
@@ -9,19 +10,19 @@ class EmailViewScreen extends StatelessWidget {
   const EmailViewScreen({super.key, required this.email});
 
   // Colors based on the design
-  static const Color background = Color(0xFF161311);
-  static const Color surfaceContainerLow = Color(0xFF1F1B19);
-  static const Color primary = Color(0xFFFFB59C);
-  static const Color onSurfaceVariant = Color(0xFFDBC1B9);
-  static const Color onSurface = Color(0xFFEAE1DD);
-  static const Color secondaryContainer = Color(0xFF3E4D3E);
-  static const Color onSecondaryContainer = Color(0xFFACBDAB);
-  static const Color surfaceContainerHighest = Color(0xFF393431);
-  static const Color outlineVariant = Color(0xFF55433D);
-  static const Color primaryContainer = Color(0xFFD97552);
-  static const Color onPrimary = Color(0xFF5C1900);
-  static const Color surfaceContainerHigh = Color(0xFF2E2927);
-  static const Color primaryFixedDim = Color(0xFFFFB59C);
+  static const Color background = AppColors.cream;
+  static const Color surfaceContainerLow = AppColors.paper;
+  static const Color primary = AppColors.ink;
+  static const Color onSurfaceVariant = AppColors.moss;
+  static const Color onSurface = AppColors.ink;
+  static const Color secondaryContainer = AppColors.paleMoss;
+  static const Color onSecondaryContainer = AppColors.ink;
+  static const Color surfaceContainerHighest = AppColors.mutedPaper;
+  static const Color outlineVariant = AppColors.line;
+  static const Color primaryContainer = AppColors.clay;
+  static const Color onPrimary = Colors.white;
+  static const Color surfaceContainerHigh = AppColors.mutedPaper;
+  static const Color primaryFixedDim = AppColors.clay;
 
   @override
   Widget build(BuildContext context) {
@@ -74,12 +75,18 @@ class EmailViewScreen extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.archive_outlined, color: onSurfaceVariant),
+                    icon: const Icon(
+                      Icons.archive_outlined,
+                      color: onSurfaceVariant,
+                    ),
                     onPressed: () {},
                     splashRadius: 24,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: onSurfaceVariant),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: onSurfaceVariant,
+                    ),
                     onPressed: () {},
                     splashRadius: 24,
                   ),
@@ -95,7 +102,10 @@ class EmailViewScreen extends StatelessWidget {
             // Main Content
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 32,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -114,7 +124,10 @@ class EmailViewScreen extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: secondaryContainer,
                             borderRadius: BorderRadius.circular(16),
@@ -130,7 +143,10 @@ class EmailViewScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(16),
@@ -174,10 +190,11 @@ class EmailViewScreen extends StatelessWidget {
                             child: CircleAvatar(
                               backgroundColor: primary.withValues(alpha: 0.1),
                               foregroundImage: NetworkImage(
-                                "https://ui-avatars.com/api/?name=${Uri.encodeComponent(email.from)}&background=393431&color=FFB59C&font-size=0.45"
+                                "https://ui-avatars.com/api/?name=${Uri.encodeComponent(email.from)}&background=393431&color=FFB59C&font-size=0.45",
                               ),
                               child: Text(
-                                (email.from.isNotEmpty ? email.from[0] : 'S').toUpperCase(),
+                                (email.from.isNotEmpty ? email.from[0] : 'S')
+                                    .toUpperCase(),
                                 style: GoogleFonts.literata(
                                   color: primary,
                                   fontWeight: FontWeight.bold,
@@ -191,11 +208,14 @@ class EmailViewScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        email.from.isNotEmpty ? email.from : 'Unknown Sender',
+                                        email.from.isNotEmpty
+                                            ? email.from
+                                            : 'Unknown Sender',
                                         style: GoogleFonts.literata(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
@@ -210,7 +230,9 @@ class EmailViewScreen extends StatelessWidget {
                                       style: GoogleFonts.literata(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
-                                        color: onSurfaceVariant.withValues(alpha: 0.7),
+                                        color: onSurfaceVariant.withValues(
+                                          alpha: 0.7,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -231,7 +253,9 @@ class EmailViewScreen extends StatelessWidget {
                                         email.date,
                                         style: GoogleFonts.literata(
                                           fontSize: 14,
-                                          color: onSurfaceVariant.withValues(alpha: 0.7),
+                                          color: onSurfaceVariant.withValues(
+                                            alpha: 0.7,
+                                          ),
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -274,11 +298,13 @@ class EmailViewScreen extends StatelessWidget {
                               color: onSurface,
                             ),
                           ),
-                          
+
                           // Attachments Section Inside Body (as per design)
                           if (email.attachments.isNotEmpty) ...[
                             const SizedBox(height: 32),
-                            Divider(color: outlineVariant.withValues(alpha: 0.3)),
+                            Divider(
+                              color: outlineVariant.withValues(alpha: 0.3),
+                            ),
                             const SizedBox(height: 24),
                             Wrap(
                               spacing: 12,
@@ -287,10 +313,14 @@ class EmailViewScreen extends StatelessWidget {
                                 return Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: surfaceContainerHighest.withValues(alpha: 0.5),
+                                    color: surfaceContainerHighest.withValues(
+                                      alpha: 0.5,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: outlineVariant.withValues(alpha: 0.2),
+                                      color: outlineVariant.withValues(
+                                        alpha: 0.2,
+                                      ),
                                     ),
                                   ),
                                   child: Row(
@@ -304,10 +334,13 @@ class EmailViewScreen extends StatelessWidget {
                                       const SizedBox(width: 12),
                                       Flexible(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              att.filename.isNotEmpty ? att.filename : 'Unnamed file',
+                                              att.filename.isNotEmpty
+                                                  ? att.filename
+                                                  : 'Unnamed file',
                                               style: GoogleFonts.literata(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w500,
@@ -320,7 +353,8 @@ class EmailViewScreen extends StatelessWidget {
                                               'Attachment',
                                               style: GoogleFonts.literata(
                                                 fontSize: 10,
-                                                color: onSurfaceVariant.withValues(alpha: 0.7),
+                                                color: onSurfaceVariant
+                                                    .withValues(alpha: 0.7),
                                               ),
                                             ),
                                           ],
@@ -350,7 +384,9 @@ class EmailViewScreen extends StatelessWidget {
                                 backgroundColor: primary,
                                 foregroundColor: onPrimary,
                                 elevation: 8,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(24),
                                 ),
@@ -380,11 +416,15 @@ class EmailViewScreen extends StatelessWidget {
                                 backgroundColor: surfaceContainerHigh,
                                 foregroundColor: onSurfaceVariant,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   side: BorderSide(
-                                    color: outlineVariant.withValues(alpha: 0.2),
+                                    color: outlineVariant.withValues(
+                                      alpha: 0.2,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -413,11 +453,15 @@ class EmailViewScreen extends StatelessWidget {
                                 backgroundColor: surfaceContainerHigh,
                                 foregroundColor: onSurfaceVariant,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   side: BorderSide(
-                                    color: outlineVariant.withValues(alpha: 0.2),
+                                    color: outlineVariant.withValues(
+                                      alpha: 0.2,
+                                    ),
                                   ),
                                 ),
                               ),

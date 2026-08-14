@@ -1,64 +1,47 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:mobile/models/classroomModel.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:CollegeBuddy/api/backend_session.dart';
+import 'package:CollegeBuddy/models/classroomModel.dart';
 
 class ClassroomApi extends ChangeNotifier {
-  late final String baseUrl;
+  ClassroomApi({BackendSession? session})
+    : session = session ?? BackendSession();
 
-  ClassroomApi() {
-    baseUrl = dotenv.env['API_URL'] ?? "https://kisha-volcanologic-motherly.ngrok-free.dev";
-  }
-  final FlutterSecureStorage storage = FlutterSecureStorage();
+  final BackendSession session;
+  String get baseUrl => session.baseUrl;
 
   bool _isLoadingCourses = false;
   bool get isLoadingCourses => _isLoadingCourses;
-
   bool _isLoadingAssignments = false;
   bool get isLoadingAssignments => _isLoadingAssignments;
-
   bool _isLoadingAIHelp = false;
   bool get isLoadingAIHelp => _isLoadingAIHelp;
 
-  Future<Map<String, String>> _authHeaders() async {
-    final accessToken = await storage.read(key: "access_token");
-    return {
-      "Authorization": "Bearer $accessToken",
-      "Content-Type": "application/json",
-    };
-  }
-
-  /// Fetch all active courses
-  Future<List<CourseModel>> fetchCourses() async {
-    print("[CLASSROOM API] fetchCourses called");
+  Future<List<CourseModel>> fetchCourses({bool refresh = false}) async {
     _isLoadingCourses = true;
     notifyListeners();
-
     try {
-      final headers = await _authHeaders();
-      final response = await http.get(
-        Uri.parse("$baseUrl/api/classroom/courses"),
-        headers: headers,
-      );
-
-      print("[CLASSROOM API] Courses response: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final coursesRaw = decoded['courses'] as List? ?? [];
-        return coursesRaw
-            .map((c) => CourseModel.fromJson(c as Map<String, dynamic>))
-            .toList();
-      } else {
-        print("[CLASSROOM API] Failed: ${response.body}");
-        return [];
-      }
-    } catch (e) {
-      print("[CLASSROOM API] Error fetching courses: $e");
+      final uri = Uri.parse(
+        '$baseUrl/api/classroom/courses',
+      ).replace(queryParameters: refresh ? {'refresh': 'true'} : null);
+      final response = await http.get(uri, headers: await session.headers());
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return [];
+      final courses =
+          (jsonDecode(response.body) as Map<String, dynamic>)['courses'];
+      if (courses is! List) return [];
+      return courses
+          .whereType<Map>()
+          .map(
+            (course) => CourseModel.fromJson(Map<String, dynamic>.from(course)),
+          )
+          .toList();
+    } catch (error) {
+      debugPrint('Course fetch failed: $error');
       return [];
     } finally {
       _isLoadingCourses = false;
@@ -66,34 +49,28 @@ class ClassroomApi extends ChangeNotifier {
     }
   }
 
-  /// Fetch assignments for a specific course
   Future<List<AssignmentModel>> fetchCourseAssignments(String courseId) async {
-    print("[CLASSROOM API] fetchCourseAssignments for $courseId");
     _isLoadingAssignments = true;
     notifyListeners();
-
     try {
-      final headers = await _authHeaders();
-      final response = await http.get(
-        Uri.parse(
-            "$baseUrl/api/classroom/course/assignments?course_id=$courseId"),
-        headers: headers,
-      );
-
-      print("[CLASSROOM API] Assignments response: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final assignmentsRaw = decoded['assignments'] as List? ?? [];
-        return assignmentsRaw
-            .map((a) => AssignmentModel.fromJson(a as Map<String, dynamic>))
-            .toList();
-      } else {
-        print("[CLASSROOM API] Failed: ${response.body}");
-        return [];
-      }
-    } catch (e) {
-      print("[CLASSROOM API] Error fetching assignments: $e");
+      final uri = Uri.parse(
+        '$baseUrl/api/classroom/course/assignments',
+      ).replace(queryParameters: {'course_id': courseId});
+      final response = await http.get(uri, headers: await session.headers());
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return [];
+      final assignments =
+          (jsonDecode(response.body) as Map<String, dynamic>)['assignments'];
+      if (assignments is! List) return [];
+      return assignments
+          .whereType<Map>()
+          .map(
+            (assignment) =>
+                AssignmentModel.fromJson(Map<String, dynamic>.from(assignment)),
+          )
+          .toList();
+    } catch (error) {
+      debugPrint('Course assignments fetch failed: $error');
       return [];
     } finally {
       _isLoadingAssignments = false;
@@ -101,34 +78,29 @@ class ClassroomApi extends ChangeNotifier {
     }
   }
 
-  /// Fetch ALL assignments across all courses
   Future<List<AssignmentModel>> fetchAllAssignments() async {
-    print("[CLASSROOM API] fetchAllAssignments called");
     _isLoadingAssignments = true;
     notifyListeners();
-
     try {
-      final headers = await _authHeaders();
       final response = await http.get(
-        Uri.parse("$baseUrl/api/classroom/assignments"),
-        headers: headers,
+        Uri.parse('$baseUrl/api/classroom/assignments'),
+        headers: await session.headers(),
       );
-
-      print("[CLASSROOM API] All assignments response: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final assignmentsRaw = decoded['assignments'] as List? ?? [];
-        return assignmentsRaw
-            .map((a) =>
-                AssignmentModel.fromGlobalJson(a as Map<String, dynamic>))
-            .toList();
-      } else {
-        print("[CLASSROOM API] Failed: ${response.body}");
-        return [];
-      }
-    } catch (e) {
-      print("[CLASSROOM API] Error fetching all assignments: $e");
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return [];
+      final assignments =
+          (jsonDecode(response.body) as Map<String, dynamic>)['assignments'];
+      if (assignments is! List) return [];
+      return assignments
+          .whereType<Map>()
+          .map(
+            (assignment) => AssignmentModel.fromGlobalJson(
+              Map<String, dynamic>.from(assignment),
+            ),
+          )
+          .toList();
+    } catch (error) {
+      debugPrint('Assignment fetch failed: $error');
       return [];
     } finally {
       _isLoadingAssignments = false;
@@ -136,117 +108,87 @@ class ClassroomApi extends ChangeNotifier {
     }
   }
 
-  /// Get AI help for an assignment
-  Future<AIHelpResponse?> getAIHelp({
+  Future<AIHelpResponse> getAIHelp({
     required String title,
     String description = '',
     String fileUrl = '',
   }) async {
-    print("[CLASSROOM API] getAIHelp called for: $title");
     _isLoadingAIHelp = true;
     notifyListeners();
-
     try {
-      final headers = await _authHeaders();
-      final response = await http.post(
-        Uri.parse("$baseUrl/api/classroom/ai-help"),
-        headers: headers,
-        body: json.encode({
-          "title": title,
-          "description": description,
-          "file_url": fileUrl,
-        }),
-      ).timeout(const Duration(seconds: 120));
-
-      print("[CLASSROOM API] AI help response: ${response.statusCode}");
-      print("[CLASSROOM API] AI help body: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}");
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        return AIHelpResponse.fromJson(decoded);
-      } else {
-        print("[CLASSROOM API] AI help failed: ${response.body}");
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/classroom/ai-help'),
+            headers: await session.headers(),
+            body: jsonEncode({
+              'title': title,
+              'description': description,
+              'file_url': fileUrl,
+            }),
+          )
+          .timeout(const Duration(seconds: 120));
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) {
         return AIHelpResponse(
           success: false,
-          error: "Server error: ${response.statusCode}",
+          error: 'Server error: ${response.statusCode}',
         );
       }
-    } catch (e) {
-      print("[CLASSROOM API] Error getting AI help: $e");
-      return AIHelpResponse(
-        success: false,
-        error: e.toString(),
+      return AIHelpResponse.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
       );
+    } catch (error) {
+      return AIHelpResponse(success: false, error: error.toString());
     } finally {
       _isLoadingAIHelp = false;
       notifyListeners();
     }
   }
 
-  /// Download a file attachment via the backend proxy and save to device
-  /// Returns the local file path if successful, null otherwise
   Future<String?> downloadAttachment({
     required String originalUrl,
     required String filename,
-    Function(double)? onProgress,
+    ValueChanged<double>? onProgress,
   }) async {
-    print("[CLASSROOM API] downloadAttachment called: $filename");
-
     try {
-      final headers = await _authHeaders();
-      // Remove content-type for download (it's not JSON)
-      headers.remove("Content-Type");
-
-      final proxyUrl = "$baseUrl/api/classroom/attachment?url=${Uri.encodeComponent(originalUrl)}";
-      
-      final request = http.Request('GET', Uri.parse(proxyUrl));
-      request.headers.addAll(headers);
-
-      final streamedResponse = await request.send().timeout(
+      final request = http.Request(
+        'GET',
+        Uri.parse(
+          '$baseUrl/api/classroom/attachment',
+        ).replace(queryParameters: {'url': originalUrl}),
+      )..headers.addAll(await session.headers(json: false));
+      final response = await request.send().timeout(
         const Duration(seconds: 120),
       );
+      await session.captureResponseToken(response);
+      if (response.statusCode != 200) return null;
 
-      if (streamedResponse.statusCode != 200) {
-        print("[CLASSROOM API] Download failed: ${streamedResponse.statusCode}");
-        return null;
-      }
-
-      // Get the download directory
-      final dir = await getApplicationDocumentsDirectory();
-      final downloadsDir = Directory('${dir.path}/CollegeBuddy');
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
-      }
-
-      // Sanitize filename
+      final directory = await getApplicationDocumentsDirectory();
+      final downloadsDirectory = Directory('${directory.path}/CollegeBuddy');
+      await downloadsDirectory.create(recursive: true);
       final safeFilename = filename.replaceAll(RegExp(r'[^\w\s\-.]'), '_');
-      final filePath = '${downloadsDir.path}/$safeFilename';
-      
-      final file = File(filePath);
+      final path = '${downloadsDirectory.path}/$safeFilename';
+      final file = File(path);
       final sink = file.openWrite();
-
-      final contentLength = streamedResponse.contentLength ?? 0;
-      int received = 0;
-
-      await for (final chunk in streamedResponse.stream) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (contentLength > 0 && onProgress != null) {
-          onProgress(received / contentLength);
+      var received = 0;
+      final length = response.contentLength ?? 0;
+      try {
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (length > 0) onProgress?.call(received / length);
         }
+      } finally {
+        await sink.close();
       }
-
-      await sink.close();
-      print("[CLASSROOM API] File saved to: $filePath");
-      return filePath;
-    } catch (e) {
-      print("[CLASSROOM API] Download error: $e");
+      return path;
+    } catch (error) {
+      debugPrint('Attachment download failed: $error');
       return null;
     }
   }
 
-  /// Get the attachment download proxy URL
-  String getAttachmentProxyUrl(String originalUrl) {
-    return "$baseUrl/api/classroom/attachment?url=${Uri.encodeComponent(originalUrl)}";
-  }
+  String getAttachmentProxyUrl(String originalUrl) => Uri.parse(
+    '$baseUrl/api/classroom/attachment',
+  ).replace(queryParameters: {'url': originalUrl}).toString();
 }

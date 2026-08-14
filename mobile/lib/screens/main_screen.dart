@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/screens/dashboard_screen.dart';
-import 'package:mobile/screens/classroom_screen.dart';
-import 'package:mobile/screens/settings_screen.dart';
-import 'package:mobile/widgets/bottom_nav_bar.dart';
+import 'package:CollegeBuddy/screens/dashboard_screen.dart';
+import 'package:CollegeBuddy/screens/classroom_screen.dart';
+import 'package:CollegeBuddy/screens/settings_screen.dart';
+import 'package:CollegeBuddy/widgets/bottom_nav_bar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

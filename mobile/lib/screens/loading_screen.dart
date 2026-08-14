@@ -1,34 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile/api/authApi.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:CollegeBuddy/api/authApi.dart';
+import 'package:CollegeBuddy/presentation/providers/providers.dart';
+import 'package:CollegeBuddy/theme/app_theme.dart';
 
-class LoadingScreen extends StatefulWidget {
+class LoadingScreen extends ConsumerStatefulWidget {
   const LoadingScreen({super.key});
 
   @override
-  State<LoadingScreen> createState() => _LoadingScreenState();
+  ConsumerState<LoadingScreen> createState() => _LoadingScreenState();
 }
 
-class _LoadingScreenState extends State<LoadingScreen> {
-  // Colors based on the design
-  static const Color background = Color(0xFF161311);
-  static const Color primary = Color(0xFFFFB59C);
-
+class _LoadingScreenState extends ConsumerState<LoadingScreen> {
   @override
   void initState() {
     super.initState();
+    AuthApi().initDeepLinks(context);
     _checkAuth();
   }
 
   Future<void> _checkAuth() async {
-    // Simulate initial loading/splash delay
-    await Future.delayed(const Duration(seconds: 3));
-
+    await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     final user = await AuthApi().currentUser;
-    // Check auth status
-    print("user: $user");
+    if (!mounted) return;
+    if (user != null) {
+      ref.read(syncServiceProvider).syncIfStale();
+    }
     Navigator.pushReplacementNamed(
       context,
       user != null ? '/main' : '/login',
@@ -37,45 +35,33 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: background,
-      body: Center(
-        child: FadeIn(
-          duration: const Duration(milliseconds: 1500),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo Icon placeholder
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: primary.withOpacity(0.1),
-                ),
-                child: const Icon(
-                  Icons.spa,
-                  size: 48,
-                  color: primary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              // App Name
-              Text(
-                'CollegeBuddy',
-                style: GoogleFonts.literata(
-                  color: primary,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                ),
-              ),
-            ],
+  Widget build(BuildContext context) => const Scaffold(
+    backgroundColor: AppColors.cream,
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image(
+            image: AssetImage('assets/branding/collegebuddy-mark.png'),
+            width: 76,
+            height: 76,
           ),
-        ),
+          SizedBox(height: 20),
+          Text(
+            'CollegeBuddy',
+            style: TextStyle(
+              fontSize: 30,
+              color: AppColors.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 12),
+          SizedBox(
+            width: 120,
+            child: LinearProgressIndicator(color: AppColors.ink, minHeight: 2),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
-

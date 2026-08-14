@@ -39,7 +39,7 @@ function App() {
       <section className="hero" id="top">
         <Leaf className="leaf-one" /><Leaf className="leaf-two" /><Leaf className="leaf-three" />
         <nav className="nav wrap" aria-label="Main navigation">
-          <a className="brand" href="#top"><i aria-hidden="true">✦</i> CollegeBuddy</a>
+          <a className="brand" href="#top"><img className="brand-mark" src="/branding/collegebuddy-mark.png" alt="" aria-hidden="true" /> CollegeBuddy</a>
           <div className="nav-links"><a href="#how-it-helps">How it helps</a><a href="#inside">Inside the app</a></div>
           <a className="nav-cta" href="#waitlist">Join waitlist</a>
         </nav>
@@ -88,7 +88,7 @@ function App() {
         <WaitlistForm />
       </section>
 
-      <footer className="footer wrap"><a className="brand" href="#top"><i aria-hidden="true">✦</i> CollegeBuddy</a><span>For students finding their flow.</span></footer>
+      <footer className="footer wrap"><a className="brand" href="#top"><img className="brand-mark" src="/branding/collegebuddy-mark.png" alt="" aria-hidden="true" /> CollegeBuddy</a><span>For students finding their flow.</span></footer>
     </main>
   );
 }

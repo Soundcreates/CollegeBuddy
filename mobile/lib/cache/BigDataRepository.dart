@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import "package:mobile/api/mailApi.dart";
-import "package:mobile/models/mailModel.dart";
-import "package:mobile/api/authApi.dart";
-import "package:mobile/models/userModel.dart";
-import "package:mobile/services/widget_service.dart";
+import "package:CollegeBuddy/api/mailApi.dart";
+import "package:CollegeBuddy/models/mailModel.dart";
+import "package:CollegeBuddy/api/authApi.dart";
+import "package:CollegeBuddy/models/userModel.dart";
+import "package:CollegeBuddy/services/widget_service.dart";
 
 class BigDataRepository {
   static final BigDataRepository _instance = BigDataRepository._internal();
@@ -41,7 +41,9 @@ class BigDataRepository {
     await Future.wait([
       prefs.setInt(_cacheTimestampKey, DateTime.now().millisecondsSinceEpoch),
       prefs.setString(
-          _cacheDataKey, json.encode(mails.map((m) => m.toJson()).toList())),
+        _cacheDataKey,
+        json.encode(mails.map((m) => m.toJson()).toList()),
+      ),
     ]);
     print("[CACHE] Wrote ${mails.length} mails to disk");
   }
@@ -63,7 +65,9 @@ class BigDataRepository {
       final prefs = await SharedPreferences.getInstance();
       final tsMillis = prefs.getInt(_cacheTimestampKey);
       if (tsMillis != null && _isCacheTimestampValid(tsMillis)) {
-        print("[MAIL FETCH] Returning in-memory cache (${_memoryCache!.length} mails)");
+        print(
+          "[MAIL FETCH] Returning in-memory cache (${_memoryCache!.length} mails)",
+        );
         return _memoryCache!;
       }
     }
@@ -71,7 +75,9 @@ class BigDataRepository {
     // 2. Disk cache (survives cold boots)
     final diskMails = await _readDiskCache();
     if (diskMails != null) {
-      print("[MAIL FETCH] Returning disk cache (${diskMails.length} mails, < ${_cacheMaxAgeHours}h old)");
+      print(
+        "[MAIL FETCH] Returning disk cache (${diskMails.length} mails, < ${_cacheMaxAgeHours}h old)",
+      );
       _memoryCache = diskMails;
       return diskMails;
     }
@@ -97,7 +103,9 @@ class BigDataRepository {
       await _writeDiskCache(response);
       await WidgetService.updateEmails(response);
     } else {
-      print("[MAIL FETCH] Backend returned empty/null — keeping existing cache if any");
+      print(
+        "[MAIL FETCH] Backend returned empty/null — keeping existing cache if any",
+      );
       _memoryCache ??= [];
     }
     return _memoryCache!;
@@ -117,7 +125,7 @@ class BigDataRepository {
   }
 
   Future<void> logoutAndClearCache() async {
-    await AuthApi().Logout();
+    await AuthApi().logout();
     _userCache = null;
     _memoryCache = null;
     await _invalidateDiskCache();

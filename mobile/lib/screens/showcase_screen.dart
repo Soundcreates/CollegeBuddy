@@ -38,7 +38,11 @@ class _Welcome extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.spa_rounded, color: _clay),
+                Image.asset(
+                  'assets/branding/collegebuddy-mark.png',
+                  width: 30,
+                  height: 30,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'CollegeBuddy',
