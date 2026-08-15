@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -8,6 +7,7 @@ class BackendSession {
   BackendSession({FlutterSecureStorage? storage})
     : storage = storage ?? const FlutterSecureStorage();
 
+  // ponytail: emulator-only fallback; real devices/CI must supply BACKEND_BASE_URL via --dart-define
   static const defaultBaseUrl = 'http://10.0.2.2:8080';
   static const accessTokenKey = 'access_token';
   static const refreshTokenKey = 'refresh_token';
@@ -16,12 +16,11 @@ class BackendSession {
   final FlutterSecureStorage storage;
 
   String get baseUrl {
-    const dartDefineUrl = String.fromEnvironment('API_URL');
-    final dotenvUrl = dotenv.env['API_URL']?.trim() ?? '';
-    final configuredUrl = dotenvUrl.isNotEmpty
-        ? dotenvUrl
-        : (dartDefineUrl.isNotEmpty ? dartDefineUrl : defaultBaseUrl);
-    return configuredUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+    const configuredUrl = String.fromEnvironment('BACKEND_BASE_URL');
+    final url = configuredUrl.trim().isNotEmpty
+        ? configuredUrl.trim()
+        : defaultBaseUrl;
+    return url.replaceFirst(RegExp(r'/+$'), '');
   }
 
   Future<String?> get accessToken => storage.read(key: accessTokenKey);

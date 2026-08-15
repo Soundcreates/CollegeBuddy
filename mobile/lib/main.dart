@@ -10,12 +10,10 @@ import 'screens/classroom_screen.dart';
 import "package:CollegeBuddy/api/mailApi.dart";
 import 'screens/settings_screen.dart';
 import 'screens/showcase_screen.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env', isOptional: true);
   const showcase = bool.fromEnvironment('SHOWCASE', defaultValue: false);
   if (showcase) {
     runApp(const ShowcaseScreen(page: int.fromEnvironment('SHOWCASE_PAGE')));

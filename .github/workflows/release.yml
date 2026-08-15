@@ -34,7 +34,9 @@ jobs:
 
       - name: Build release APK
         working-directory: mobile
-        run: flutter build apk --release
+        env:
+          BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
+        run: flutter build apk --release --dart-define=BACKEND_BASE_URL="$BACKEND_BASE_URL"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
