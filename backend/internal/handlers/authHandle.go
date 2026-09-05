@@ -11,6 +11,7 @@ import (
 	"somaiya-ext/internal/auth"
 	"somaiya-ext/internal/models"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -24,34 +25,64 @@ type userGmailKey string
 
 const user_gmail userGmailKey = "user_gmail"
 
+// loginGoogleScopes are non-sensitive identity scopes only.
+// Gmail / Classroom / Drive must use separate future "Connect …" OAuth flows.
+var loginGoogleScopes = []string{
+	"openid",
+	"https://www.googleapis.com/auth/userinfo.email",
+	"https://www.googleapis.com/auth/userinfo.profile",
+}
+
+// googleCodeExchanges dedupes token exchange for the same auth code.
+// Mobile Chrome often hits the callback twice; Google auth codes are single-use,
+// so the second exchange returns invalid_grant without this guard.
+type googleCodeExchange struct {
+	once  sync.Once
+	token *oauth2.Token
+	err   error
+}
+
+var googleCodeExchanges sync.Map // code -> *googleCodeExchange
+
 func (h *Handler) getGoogleOauthConfig() *oauth2.Config {
-	redirect_url := h.Config.BACKEND_URL + "/api/auth/google/callback"
+	base := strings.TrimRight(strings.TrimSpace(h.Config.BACKEND_URL), "/")
+	redirectURL := base + "/api/auth/google/callback"
 	return &oauth2.Config{
 		ClientID:     h.Config.OAUTH_CLIENT_ID,
 		ClientSecret: h.Config.OAUTH_CLIENT_SECRET,
-		RedirectURL:  redirect_url,
-		Scopes: []string{
-			"https://www.googleapis.com/auth/userinfo.email",
-			"https://www.googleapis.com/auth/userinfo.profile",
-			"https://www.googleapis.com/auth/gmail.readonly",
-			"https://www.googleapis.com/auth/gmail.modify",
-			"https://www.googleapis.com/auth/classroom.courses.readonly",
-			"https://www.googleapis.com/auth/classroom.coursework.me",
-			"https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
-			"https://www.googleapis.com/auth/drive.readonly",
-		},
-		Endpoint: google.Endpoint,
+		RedirectURL:  redirectURL,
+		Scopes:       loginGoogleScopes,
+		Endpoint:     google.Endpoint,
 	}
 }
+
+func (h *Handler) exchangeGoogleAuthCode(ctx context.Context, code string) (*oauth2.Token, error) {
+	actual, _ := googleCodeExchanges.LoadOrStore(code, &googleCodeExchange{})
+	entry := actual.(*googleCodeExchange)
+
+	entry.once.Do(func() {
+		cfg := h.getGoogleOauthConfig()
+		log.Printf("Exchanging Google auth code (redirect_uri=%s)", cfg.RedirectURL)
+		entry.token, entry.err = cfg.Exchange(ctx, code)
+		// Keep result briefly so a duplicate callback can reuse it.
+		time.AfterFunc(2*time.Minute, func() {
+			googleCodeExchanges.Delete(code)
+		})
+	})
+
+	return entry.token, entry.err
+}
+
 func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	googleOauthConfig := h.getGoogleOauthConfig()
-	url := googleOauthConfig.AuthCodeURL(OauthStateString, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
-	fmt.Println("Generated OAuth URL: ", url)
+	authURL := googleOauthConfig.AuthCodeURL(OauthStateString, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
+	fmt.Println("Generated OAuth URL: ", authURL)
+
 	response := map[string]interface{}{
 		"success":   true,
-		"oauth_url": url,
+		"oauth_url": authURL,
 		"message":   "OAuth URL generated successfully",
 	}
 
@@ -68,21 +99,23 @@ func (h *Handler) GoogleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("OAuth callback received. State: %s", state)
-	//this is the code
-	code := r.FormValue("code")
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		code = r.FormValue("code")
+	}
 	if code == "" {
 		http.Error(w, "Code not found", http.StatusBadRequest)
 		return
 	}
-	//this is the token im exchanging
-	// Create a context with a 10-second timeout for OAuth operations
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 	defer cancel()
 
 	googleOauthConfig := h.getGoogleOauthConfig()
-	token, err := googleOauthConfig.Exchange(ctx, code)
+	token, err := h.exchangeGoogleAuthCode(ctx, code)
 	if err != nil {
-		http.Error(w, "Token exchange failed: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Google token exchange failed (redirect_uri=%s): %v", googleOauthConfig.RedirectURL, err)
+		http.Error(w, "Token exchange failed: "+err.Error()+". Please close this tab and try signing in again from the app.", http.StatusBadRequest)
 		return
 	}
 
@@ -173,14 +206,19 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, userInfo models.
 		return "", "", false, err
 	}
 
-	// Update the database with fresh OAuth tokens and expiry using explicit WHERE clause
+	// Persist Google identity tokens if present. These are NOT Gmail/Drive scopes;
+	// API integrations must use a separate Connect flow. Do not clear an existing
+	// refresh token when Google omits a new one on re-login.
+	tokenUpdates := map[string]interface{}{
+		"o_access_token":        userInfo.OAccessToken,
+		"o_access_token_expiry": userInfo.OAccessTokenExpiry,
+	}
+	if userInfo.ORefreshToken != "" {
+		tokenUpdates["o_refresh_token"] = userInfo.ORefreshToken
+	}
 	err = h.DB.Model(&models.Student{}).
 		Where("svv_email = ?", userInfo.SVVEmail).
-		Updates(models.Student{
-			OAccessToken:       userInfo.OAccessToken,
-			ORefreshToken:      userInfo.ORefreshToken,
-			OAccessTokenExpiry: userInfo.OAccessTokenExpiry,
-		}).Error
+		Updates(tokenUpdates).Error
 	if err != nil {
 		http.Error(w, "Failed to update tokens: "+err.Error(), http.StatusInternalServerError)
 		return "", "", false, err

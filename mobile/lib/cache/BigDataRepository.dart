@@ -131,6 +131,10 @@ class BigDataRepository {
     await _invalidateDiskCache();
   }
 
+  void clearUserCache() {
+    _userCache = null;
+  }
+
   void clearMailCache() {
     print("[CACHE] Clearing mail cache");
     _memoryCache = null;

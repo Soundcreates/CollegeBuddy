@@ -1,29 +1,37 @@
+# Self-hosted production stack.
+# Required in backend/.env (or the host environment):
+#   BACKEND_URL          public HTTPS origin (Google OAuth redirect base, no trailing slash)
+#   JWT_SECRET           OAUTH_CLIENT_ID  OAUTH_CLIENT_SECRET
+#   DB_USER DB_PASSWORD DB_NAME
+# Optional:
+#   DATABASE_URL         managed Postgres (e.g. Neon). If unset, uses the compose `db` service.
+#   EXTENSION_ID PORT DB_TIMEZONE
 services:
   db:
     image: postgres:15
     container_name: collegebuddy_db
-    env_file:
-      - .env
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_NAME:-CollegeBuddyDB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Do not publish Postgres to the host in production; other services reach it on the network.
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 20
+    restart: unless-stopped
     networks:
       - collegebuddy_network
 
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     container_name: collegebuddy_backend
     depends_on:
       db:
@@ -31,29 +39,33 @@ services:
       python:
         condition: service_started
     ports:
-      - "8080:8080"
-    volumes:
-      - .:/backend:Z
-    command: air
+      - "${PORT:-8080}:8080"
+    # No bind-mount / no `air` — run the compiled binary from Dockerfile.
     networks:
       - collegebuddy_network
     env_file:
       - .env
     environment:
+      MODE: production
+      # Public URL used for Google OAuth redirect_uri ({BACKEND_URL}/api/auth/google/callback).
+      # Must NOT be DEV_BACKEND_URL / ngrok — use the real deploy origin (e.g. Render / your domain).
+      BACKEND_URL: ${BACKEND_URL:?BACKEND_URL is required}
+      # Prefer managed DATABASE_URL when set; otherwise the compose Postgres service.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@db:5432/${DB_NAME:-CollegeBuddyDB}?sslmode=disable}
       DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      DB_TIMEZONE: ${DB_TIMEZONE}
-      JWT_SECRET: ${JWT_SECRET}
-      PORT: ${PORT}
-      OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID}
-      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
-      EXTENSION_ID: ${EXTENSION_ID}
-      DATABASE_URL: ${DATABASE_URL}
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_NAME: ${DB_NAME:-CollegeBuddyDB}
+      DB_TIMEZONE: ${DB_TIMEZONE:-Asia/Kolkata}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      PORT: ${PORT:-8080}
+      OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required}
+      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required}
+      EXTENSION_ID: ${EXTENSION_ID:-}
       PYTHON_AI_SERVICE_URL: http://python:8000/text-classification
       SCRAPER_SERVICE_URL: http://python:8000
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -62,16 +74,15 @@ services:
       context: ../scraperService
       dockerfile: Dockerfile
     container_name: collegebuddy_python
-    ports:
-      - "8000:8000"
-    volumes:
-      - ../scraperService:/python:Z
-    command: uvicorn app.app:app --host 0.0.0.0 --port 8000 --reload
+    expose:
+      - "8000"
+    # Production: image CMD only (no --reload, no source bind-mount).
     env_file:
       - ../scraperService/.env
     environment:
       HF_TIMEOUT_SECONDS: ${HF_TIMEOUT_SECONDS:-20}
       CLASSIFY_BUDGET_SECONDS: ${CLASSIFY_BUDGET_SECONDS:-45}
+    restart: unless-stopped
     networks:
       - collegebuddy_network
 

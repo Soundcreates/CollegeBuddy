@@ -36,7 +36,13 @@ jobs:
         working-directory: mobile
         env:
           BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
-        run: flutter build apk --release --dart-define=BACKEND_BASE_URL="$BACKEND_BASE_URL"
+        run: |
+          if [ -z "$BACKEND_BASE_URL" ]; then
+            echo "BACKEND_BASE_URL secret is not set"
+            exit 1
+          fi
+
+          flutter build apk --release --dart-define=BACKEND_BASE_URL="$BACKEND_BASE_URL"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

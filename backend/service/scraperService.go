@@ -40,6 +40,8 @@ func (gs *GmailService) GmailClientFromStoredToken(ctx context.Context, clientID
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  fmt.Sprintf("%s/api/auth/google/callback", os.Getenv("BACKEND_URL")),
+		// Used only when refreshing previously granted Gmail tokens (Connect Gmail flow).
+		// Login itself requests identity scopes only — see getGoogleOauthConfig.
 		Scopes: []string{
 			"https://www.googleapis.com/auth/gmail.readonly",
 			"https://www.googleapis.com/auth/gmail.modify",

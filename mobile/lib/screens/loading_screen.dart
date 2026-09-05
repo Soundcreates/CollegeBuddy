@@ -15,22 +15,52 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen> {
   @override
   void initState() {
     super.initState();
-    AuthApi().initDeepLinks(context);
     _checkAuth();
   }
 
   Future<void> _checkAuth() async {
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
-    final user = await AuthApi().currentUser;
+
+    final auth = AuthApi();
+
+    // Deep link may already have navigated to /main during the delay.
+    if (auth.isAuthenticated || auth.oauthInProgress) {
+      if (auth.isAuthenticated) {
+        ref.read(syncServiceProvider).syncIfStale();
+        appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/main',
+          (route) => false,
+        );
+      }
+      return;
+    }
+
+    final user = await auth.currentUser;
     if (!mounted) return;
+
+    // Auth may have completed via deep link while profile fetch was in flight.
+    if (auth.isAuthenticated) {
+      ref.read(syncServiceProvider).syncIfStale();
+      appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/main',
+        (route) => false,
+      );
+      return;
+    }
+
     if (user != null) {
       ref.read(syncServiceProvider).syncIfStale();
+      appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/main',
+        (route) => false,
+      );
+      return;
     }
-    Navigator.pushReplacementNamed(
-      context,
-      user != null ? '/main' : '/login',
-      arguments: user,
+
+    appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/login',
+      (route) => false,
     );
   }
 

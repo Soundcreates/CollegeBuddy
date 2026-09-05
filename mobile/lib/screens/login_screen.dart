@@ -11,28 +11,50 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _isLoading = false;
+  late final AuthApi _auth;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthApi>().initDeepLinks(context);
-    });
+    _auth = context.read<AuthApi>();
+    _auth.addListener(_onAuthChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onAuthChanged());
+  }
+
+  @override
+  void dispose() {
+    _auth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (!mounted) return;
+    if (_auth.isAuthenticated) {
+      appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/main',
+        (route) => false,
+      );
+    }
   }
 
   Future<void> _signIn() async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
+    if (_auth.isLoading || _auth.oauthInProgress) return;
     try {
-      await context.read<AuthApi>().startGoogleOauth();
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      await _auth.startGoogleOauth();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign-in failed: $error')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthApi>();
+    final waitingForBrowser = auth.oauthInProgress;
+    final busy = auth.isLoading || waitingForBrowser;
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
@@ -92,7 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'A gentle place for the emails, assignments, and next steps that matter.',
+                waitingForBrowser
+                    ? 'Finishing Google sign-in…'
+                    : 'A gentle place for the emails, assignments, and next steps that matter.',
                 style: AppText.sans(
                   size: 16,
                   color: const Color(0xFF536A5D),
@@ -104,8 +128,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 56,
                 child: FilledButton.icon(
-                  onPressed: _isLoading ? null : _signIn,
-                  icon: _isLoading
+                  onPressed: busy ? null : _signIn,
+                  icon: busy
                       ? const SizedBox(
                           width: 22,
                           height: 22,
@@ -116,7 +140,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         )
                       : const Icon(Icons.g_mobiledata_rounded, size: 28),
                   label: Text(
-                    'Continue with Google',
+                    waitingForBrowser
+                        ? 'Completing sign-in…'
+                        : 'Continue with Google',
                     style: AppText.sans(
                       weight: FontWeight.w700,
                       color: Colors.white,

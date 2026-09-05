@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -7,7 +8,7 @@ class BackendSession {
   BackendSession({FlutterSecureStorage? storage})
     : storage = storage ?? const FlutterSecureStorage();
 
-  // ponytail: emulator-only fallback; real devices/CI must supply BACKEND_BASE_URL via --dart-define
+  /// Emulator-only fallback when neither .env nor --dart-define is set.
   static const defaultBaseUrl = 'http://10.0.2.2:8080';
   static const accessTokenKey = 'access_token';
   static const refreshTokenKey = 'refresh_token';
@@ -15,12 +16,17 @@ class BackendSession {
 
   final FlutterSecureStorage storage;
 
+  /// Runtime base URL resolution order:
+  /// 1. `.env` → `BACKEND_BASE_URL` (flutter_dotenv, loaded at startup)
+  /// 2. `--dart-define=BACKEND_BASE_URL=...` (CI / one-off overrides)
+  /// 3. Android emulator localhost default
   String get baseUrl {
-    const configuredUrl = String.fromEnvironment('BACKEND_BASE_URL');
-    final url = configuredUrl.trim().isNotEmpty
-        ? configuredUrl.trim()
-        : defaultBaseUrl;
-    return url.replaceFirst(RegExp(r'/+$'), '');
+    final fromDotEnv = dotenv.maybeGet('BACKEND_BASE_URL')?.trim() ?? '';
+    const fromDefine = String.fromEnvironment('BACKEND_BASE_URL');
+    final raw = fromDotEnv.isNotEmpty
+        ? fromDotEnv
+        : (fromDefine.trim().isNotEmpty ? fromDefine.trim() : defaultBaseUrl);
+    return raw.replaceFirst(RegExp(r'/+$'), '');
   }
 
   Future<String?> get accessToken => storage.read(key: accessTokenKey);
@@ -30,6 +36,8 @@ class BackendSession {
     return {
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       if (json) 'Content-Type': 'application/json',
+      // Free ngrok shows an interstitial HTML page without this header.
+      'ngrok-skip-browser-warning': 'true',
     };
   }
 

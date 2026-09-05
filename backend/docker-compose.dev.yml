@@ -2,12 +2,10 @@ services:
   db:
     image: postgres:15
     container_name: collegebuddy_db
-    env_file:
-      - .env
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-CollegeBuddy}
+      POSTGRES_DB: ${DB_NAME:-CollegeBuddyDB}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -40,20 +38,25 @@ services:
     env_file:
       - .env
     environment:
+      # Force local Postgres from this compose file (ignore DATABASE_URL / MODE=production from .env)
+      MODE: development
+      DATABASE_URL: ""
       DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      DB_TIMEZONE: ${DB_TIMEZONE}
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-CollegeBuddy}
+      DB_NAME: ${DB_NAME:-CollegeBuddyDB}
+      DB_TIMEZONE: ${DB_TIMEZONE:-Asia/Kolkata}
       JWT_SECRET: ${JWT_SECRET}
-      PORT: ${PORT}
+      PORT: ${PORT:-8080}
       OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID}
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
       EXTENSION_ID: ${EXTENSION_ID}
-      DATABASE_URL: ${DATABASE_URL}
       PYTHON_AI_SERVICE_URL: http://python:8000/text-classification
       SCRAPER_SERVICE_URL: http://python:8000
+      # Google OAuth redirect must hit THIS stack (not production Render).
+      # Set DEV_BACKEND_URL in .env to your ngrok HTTPS origin (same as mobile BACKEND_BASE_URL).
+      BACKEND_URL: ${DEV_BACKEND_URL:-http://localhost:8080}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

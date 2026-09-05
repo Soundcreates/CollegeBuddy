@@ -99,8 +99,8 @@ function AuthPage() {
         setUser(oauthMessage.user as User);
         setAuthLoading(false);
         setShowDashboard(true);
-        // Start Gmail scraping after successful OAuth
-        handleGmailScrape();
+        // Gmail scrape is a separate integration — do not run it as part of login.
+        // Login only grants identity scopes (openid/email/profile).
       }
 
       if (message.type === "GMAIL_SCRAPE_SUCCESS") {

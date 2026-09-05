@@ -22,6 +22,8 @@ func ClassroomClientFromStoredToken(ctx context.Context, clientID, clientSecret,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  fmt.Sprintf("%s/api/auth/google/callback", os.Getenv("BACKEND_URL")),
+		// Used only when refreshing previously granted Classroom/Drive tokens
+		// (future Connect Classroom / Connect Drive flows — not part of login).
 		Scopes: []string{
 			"https://www.googleapis.com/auth/classroom.courses.readonly",
 			"https://www.googleapis.com/auth/classroom.coursework.me",
